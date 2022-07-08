@@ -44,6 +44,6 @@ The wrapper class is in `wrapperCLEFT.py` and can be tested by running:
 For the python wrapper to work in other python scripts, `libCLEFT.so` and 
 `pyCLEFT.cpython-*.so` files need to be put in the same directory.
 
-** Contact
+## Contact
 
 For any question, please send an email to sylvain.delatorre@lam.fr.
