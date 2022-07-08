@@ -1,23 +1,48 @@
 # CLEFT_GS
 
-Author: Sylvain de la Torre, 2022
+This C code implements the CLEFT Gaussian Streaming model. It is based
+on CLPT_GS code by Antoine Rocher & Michel-Andrès Breton:
+https://github.com/sdlt/CLPT_GS. The final products are the monopole,
+quadrupole, and hexadecapole moments of the redshift-space two-point
+correlation function. A python wrapper is also provided.
 
-Based on CLPT_GS code by Antoine Rocher, Michel-Andrès Breton (https://github.com/sdlt/CLPT_GS).
+## Requirements
 
-C code implementing CLEFT Gaussian streaming (GS) redshift-space distortions
-model in configuration space.
+The `gsl`, `openmp` libraries should to be installed. For the python 
+wrapper, `cffi` and `numpy` modules should be installed.
 
-*** Requirements ***
+## Compilation
 
-It needs gsl and fftw3 libraries to be installed.
+Compilation is done with
+> make all
 
-*** Compilation *** 
+Individual codes are compiled as:
+> make gs
 
-In the code folder run:
-make
+> make cleft
 
-To build it as a library: 
-make lib
+> make libgs
+
+The `GS` and `CLEFT` executables can be ran from the command line.
+`CLEFT` computes the ingredients of the CLEFT-GS model,
+`GS` computes the prediction of the model for the monopole, quadrupole, 
+and hexadecapole of the correlation function, and `libCLEFT.so` is a library that 
+can be used externally in other C codes or wrappers.
+
+## Python wrapper
+
+The model can be used as a python module calling the `libCLEFT` library. The CLEFT 
+python module needs first to be built with `cffi`. For this:
+> cd pymodule
+
+> python build.py
+
+The wrapper class is in `wrapperCLEFT.py` and can be tested by running:
+
+> python wrapperCLEFT.py
+
+For the python wrapper to work in other python scripts, `libCLEFT.so` and 
+`pyCLEFT.cpython-*.so` files need to be put in the same directory.
 
 ** Contact
 
