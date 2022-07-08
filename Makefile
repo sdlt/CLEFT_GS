@@ -1,27 +1,22 @@
-# Makefile for compiling the CLPT_GS code on Linux systems
+# Makefile
 
 CC = gcc
-CF = -O3 -Wall -Wextra -Wno-unused-parameter -Wuninitialized -Winit-self -pedantic -ffast-math -std=gnu11
+CF = -O3 -fpic -Wall -pedantic
+CL = -lm -lgsl -lgslcblas -fopenmp
 
-LIBRARIES = -lgsl -lgslcblas -lm -fopenmp
+all: cleft gs libgs
 
-#FINALIZE COMPILE FLAGS
-CF += $(OPTIONS) #-g
+cleft: CLEFT.c
+	$(CC) $(CF) CLEFT.c -o CLEFT $(CL)
 
-## FINALIZE 
-CLPT_INC = $(INCLUDES)
-CLPT_LIB =  $(LIBRARIES) 
+gs: GaussianStreaming.c	
+	$(CC) $(CF) GaussianStreaming.c -o GS $(CL)
 
-all: CLEFT GS
-
-CLEFT: Code_RSD_CLEFT.c 
-	$(CC) Code_RSD_CLEFT.c -o CLEFT $(CF) $(CLPT_INC) $(CLPT_LIB)
-
-GS: Code_RSD_GS.c
-	$(CC) Code_RSD_GS.c -o GS $(CF) $(CLPT_INC) $(CLPT_LIB)
+libgs:
+	$(CC) $(CF) -shared GaussianStreaming.c -o libCLEFT.so $(CL)
 
 clean:
-	rm -f CLEFT GS */*~ *~
+	rm -f *~ *.o
 
-lib:    
-	$(CC) -shared Code_RSD_GS.c  -fpic $(CF) $(CLPT_INC) $(CLPT_LIB) -o libGSCLEFT.so
+purge:
+	rm -f GS CLEFT libCLEFT.so *~ *.o
