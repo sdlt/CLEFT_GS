@@ -1472,7 +1472,7 @@ void write_qfuncs(void)
 /************************************************************************************************************************************************************************/
 /*********************\\Interpolation functions\\***********************************************************************************************************************/
 																										
-void interpole(int n, char ficher[100], int nLines, int nHeader)
+void interpole(int n, char ficher[], int nLines, int nHeader)
 {
   double T_x[nLines];
   double T_y[nLines];
