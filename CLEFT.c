@@ -513,65 +513,45 @@ double R2(double k) {
     return (k * k * k) / (4. * M_PI * M_PI) * P_L(k) * (result1 + result2);
 }
 
-void write_R(void) {
-    printf("getting R function...\n");
-    FILE *f;
-    const int nk = 11000; // Nombre de points
-    const double log_kmin = log10(kmin);
-    const double log_kmax = log10(kmax);
-    const double dk = (log_kmax - log_kmin) / nk;
-
-    f = fopen("data/func_R.dat", "w+");
-
-    double R1_array[nk + 1];
-    double R2_array[nk + 1];
-    for (int i = 0; i <= nk; i++) {
-        double k = pow(10, log_kmin + i * dk);
-        R1_array[i] = R1(k);
-        R2_array[i] = R2(k);
-        fprintf(f, "%.13le %.13le %.13le\n", k, R1_array[i], R2_array[i]);
-    }
-    fclose(f);
-    return;
-}
-
-void write_R1(void) {
+void compute_and_interpolate_R1(void) {
     printf("getting R function 1/2...\n");
-    FILE *f;
     const int nk = 11000; // Nombre de points
     const double log_kmin = log10(kmin);
     const double log_kmax = log10(kmax);
     const double dk = (log_kmax - log_kmin) / nk;
 
-    f = fopen("data/func_R1.dat", "w+");
-
     double R1_array[nk + 1];
+    double k_array[nk + 1];
     for (int i = 0; i <= nk; i++) {
         double k = pow(10, log_kmin + i * dk);
         R1_array[i] = R1(k);
-        fprintf(f, "%.13le %.13le\n", k, R1_array[i]);
+        k_array[i] = k;
     }
-    fclose(f);
+
+    acc[2] = gsl_interp_accel_alloc();
+    spline[2] = gsl_spline_alloc(gsl_interp_cspline, nk + 1);
+    gsl_spline_init(spline[2], k_array, R1_array, nk + 1);
     return;
 }
 
-void write_R2(void) {
+void compute_and_interpolate_R2(void) {
     printf("getting R function 2/2...\n");
-    FILE *f;
     int nk = 11000; // Nombre de points
     double log_kmin = log10(kmin);
     double log_kmax = log10(kmax);
     double dk = (log_kmax - log_kmin) / nk;
 
-    f = fopen("data/func_R2.dat", "w+");
-
     double R2_array[nk + 1];
+    double k_array[nk + 1];
     for (int i = 0; i <= nk; i++) {
         double k = pow(10, log_kmin + i * dk);
         R2_array[i] = R2(k);
-        fprintf(f, "%.13le %.13le\n", k, R2_array[i]);
+        k_array[i] = k;
     }
-    fclose(f);
+
+    acc[3] = gsl_interp_accel_alloc();
+    spline[3] = gsl_spline_alloc(gsl_interp_cspline, nk + 1);
+    gsl_spline_init(spline[3], k_array, R2_array, nk + 1);
     return;
 }
 
@@ -642,73 +622,78 @@ double Q_n(int n, double k) {
     F.params = &p;
 
     if (n == 9)
-        gsl_integration_qag(&F, 0., 1., 0, 5e-3, 200, 6, w, &result1, &error);
+        gsl_integration_qag(&F, 0., 1., 0, 5e-2, 200, 6, w, &result1, &error);
     else
         gsl_integration_qag(&F, 0., 1., 0, 1e-3, 200, 6, w, &result1, &error);
 
     if (kmax / k > 1)
-        gsl_integration_qag(&F, 1., kmax / k, 0, 1e-2, 200, 6, w, &result2, &error);
+        gsl_integration_qag(&F, 1., kmax / k, 0, 5e-2, 200, 6, w, &result2, &error);
 
     gsl_integration_workspace_free(w);
 
     return (k * k * k) / (4. * M_PI * M_PI) * (result1 + result2);
 }
 
-void write_Qn(void) {
-    FILE *f;
+void compute_and_interpolate_Qn(void) {
+    // FILE* f;
     int n;
     const int nk = 3000; // Nombre de points
     const double log_kmin = log10(kmin);
     const double log_kmax = log10(kmax);
     const double dk = (log_kmax - log_kmin) / nk;
-    double Q1_array[nk + 1], Q2_array[nk + 1], Q5_array[nk + 1], Q8_array[nk + 1], Qs_array[nk + 1];
+    double Q1_array[nk + 1], Q2_array[nk + 1], Q5_array[nk + 1], Q8_array[nk + 1], Qs_array[nk + 1], k_array[nk + 1];
     for (n = 1; n < 10; n++) {
         printf("getting Q function %d/9...\n", n);
         switch (n) {
         case 1:
-            f = fopen("data/func_Q1.dat", "w+");
             for (int i = 0; i <= nk; i++) {
                 double k = pow(10, log_kmin + i * dk);
                 Q1_array[i] = Q_n(1, k);
-                fprintf(f, "%.13le %.13le\n", k, Q1_array[i]);
+                k_array[i] = k;
             }
-            fclose(f);
+            acc[4] = gsl_interp_accel_alloc();
+            spline[4] = gsl_spline_alloc(gsl_interp_cspline, nk + 1);
+            gsl_spline_init(spline[4], k_array, Q1_array, nk + 1);
             break;
         case 2:
-            f = fopen("data/func_Q2.dat", "w+");
             for (int i = 0; i <= nk; i++) {
                 double k = pow(10, log_kmin + i * dk);
                 Q2_array[i] = Q_n(2, k);
-                fprintf(f, "%.13le %.13le\n", k, Q2_array[i]);
+                k_array[i] = k;
             }
-            fclose(f);
+            acc[5] = gsl_interp_accel_alloc();
+            spline[5] = gsl_spline_alloc(gsl_interp_cspline, nk + 1);
+            gsl_spline_init(spline[5], k_array, Q2_array, nk + 1);
             break;
         case 5:
-            f = fopen("data/func_Q5.dat", "w+");
             for (int i = 0; i <= nk; i++) {
                 double k = pow(10, log_kmin + i * dk);
                 Q5_array[i] = Q_n(5, k);
-                fprintf(f, "%.13le %.13le\n", k, Q5_array[i]);
+                k_array[i] = k;
             }
-            fclose(f);
+            acc[6] = gsl_interp_accel_alloc();
+            spline[6] = gsl_spline_alloc(gsl_interp_cspline, nk + 1);
+            gsl_spline_init(spline[6], k_array, Q5_array, nk + 1);
             break;
         case 8:
-            f = fopen("data/func_Q8.dat", "w+");
             for (int i = 0; i <= nk; i++) {
                 double k = pow(10, log_kmin + i * dk);
                 Q8_array[i] = Q_n(8, k);
-                fprintf(f, "%.13le %.13le\n", k, Q8_array[i]);
+                k_array[i] = k;
             }
-            fclose(f);
+            acc[7] = gsl_interp_accel_alloc();
+            spline[7] = gsl_spline_alloc(gsl_interp_cspline, nk + 1);
+            gsl_spline_init(spline[7], k_array, Q8_array, nk + 1);
             break;
         case 9:
-            f = fopen("data/func_Qs.dat", "w+");
             for (int i = 0; i <= nk; i++) {
                 double k = pow(10, log_kmin + i * dk);
                 Qs_array[i] = Q_n(9, k);
-                fprintf(f, "%.13le %.13le\n", k, Qs_array[i]);
+                k_array[i] = k;
             }
-            fclose(f);
+            acc[24] = gsl_interp_accel_alloc();
+            spline[24] = gsl_spline_alloc(gsl_interp_cspline, nk + 1);
+            gsl_spline_init(spline[24], k_array, Qs_array, nk + 1);
             break;
         default:
             break;
@@ -1351,99 +1336,6 @@ double T_112(double q) {
 }
 
 /************************************************************************************************************************************************************************/
-/***************************\\Compute U, X, Y, V and T (q) in text file for interpolation\\******************************************************************************/
-
-void q_function(void) {
-    FILE *fx, *fy, *fw, *fu, *fxi;
-    double q, logq;
-    double qmin = 0.001;
-    double qmax = 2000; // Maximum q to compute the q functions // 2000 by default
-    int nq = 3000;      // nombre de pas
-    double log_qmin = log10(qmin);
-    double log_qmax = log10(qmax);
-    double dq = (log_qmax - log_qmin) / nq;
-
-    printf("getting Xi_L function...\n");
-    fxi = fopen("data/Xi_L_func.dat", "w+");
-    fprintf(fxi, "%.13lf %.13lf\n", 0., Xi_L(0.));
-    fclose(fxi);
-    fxi = fopen("data/Xi_L_func.dat", "a+");
-    for (logq = log_qmin; logq < log_qmax; logq += dq) {
-        q = pow(10, logq);
-        fprintf(fxi, "%.13lf %.13lf\n", q, Xi_L(q));
-    }
-    fclose(fxi);
-    printf("getting U function...\n");
-    fu = fopen("data/U_func.dat", "w+");
-    fprintf(fu, "%.13lf %.13lf %.13lf %.13lf %.13lf\n", 0., 0., 0., 0., 0.);
-    fclose(fu);
-    fu = fopen("data/U_func.dat", "a+");
-    for (logq = log_qmin; logq < log_qmax; logq += dq) {
-        q = pow(10, logq);
-        // printf("U(%f)\n", q);
-        fprintf(fu, "%.13lf %.13lf %.13lf %.13lf %.13lf\n", q, U_1(q), U_3(q), U_11(q), U_20(q));
-    }
-    fclose(fu);
-    printf("getting X function...\n");
-    fx = fopen("data/X_func.dat", "w+");
-    fprintf(fx, "%.13lf %.13lf %.13lf %.13lf %.13lf\n", 0., 0., 0., 0., 0.);
-    fclose(fx);
-    fx = fopen("data/X_func.dat", "a+");
-    for (logq = log_qmin; logq < log_qmax; logq += dq) {
-        q = pow(10, logq);
-        fprintf(fx, "%.13lf %.13lf %.13lf %.13lf %.13lf\n", q, X_11(q), X_13(q), X_22(q), X_10_12(q));
-    }
-    fclose(fx);
-    printf("getting Y function...\n");
-    fy = fopen("data/Y_func.dat", "w+");
-    fprintf(fy, "%.13lf %.13lf %.13lf %.13lf %.13lf\n", 0., 0., 0., 0., 0.);
-    fclose(fy);
-    fy = fopen("data/Y_func.dat", "a+");
-    for (logq = log_qmin; logq < log_qmax; logq += dq) {
-        q = pow(10, logq);
-        fprintf(fy, "%.13lf %.13lf %.13lf %.13lf %.13lf\n", q, Y_11(q), Y_13(q), Y_22(q), Y_10_12(q));
-    }
-    fclose(fy);
-    printf("getting W function...\n");
-    fw = fopen("data/W_func.dat", "w+");
-    fprintf(fw, "%.13lf %.13lf %.13lf %.13lf\n", 0., 0., 0., 0.);
-    fclose(fw);
-    fw = fopen("data/W_func.dat", "a+");
-    for (logq = log_qmin; logq < log_qmax; logq += dq) {
-        q = pow(10, logq);
-        fprintf(fw, "%.13lf %.13lf %.13lf %.13lf\n", q, V1_112(q), V3_112(q), T_112(q));
-    }
-    fclose(fw);
-    return;
-}
-
-void write_qfuncs(void) {
-    FILE *fx;
-    double q, logq;
-    double qmin = 0.001;
-    double qmax = 2000; // Maximum q to compute the q functions // 2000 by default
-    int nq = 3000;      // nombre de pas
-    double log_qmin = log10(qmin);
-    double log_qmax = log10(qmax);
-    double dq = (log_qmax - log_qmin) / nq;
-
-    printf("getting Xi_L and q functions...\n");
-
-    fx = fopen("data/qfuncs.dat", "w+");
-    fprintf(fx, "0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n");
-
-    for (logq = log_qmin; logq < log_qmax; logq += dq) {
-        q = pow(10, logq);
-        fprintf(fx, "%.13le %.13le %.13le %.13le %.13le %.13le %.13le %.13le %.13le %.13le %.13le %.13le %.13le %.13le %.13le %.13le %.13le %.13le\n",
-                q, Xi_L(q), U_1(q), U_3(q), U_11(q), U_20(q), X_11(q), X_13(q), X_22(q), X_10_12(q), Y_11(q), Y_13(q), Y_22(q), Y_10_12(q),
-                V1_112(q), V3_112(q), T_112(q), V_10(q));
-    }
-
-    fclose(fx);
-    return;
-}
-
-/************************************************************************************************************************************************************************/
 /*********************\\Interpolation functions\\***********************************************************************************************************************/
 
 void interpole(int n, char ficher[], int nLines, int nHeader) {
@@ -1459,206 +1351,6 @@ void interpole(int n, char ficher[], int nLines, int nHeader) {
     spline[n] = gsl_spline_alloc(gsl_interp_cspline, nLines);
     gsl_spline_init(spline[n], T_x, T_y, nLines);
     fclose(f);
-}
-
-void interp_qfunc() {
-    FILE *fu, *fx, *fy, *fw;
-    int i;
-    const int val = 3002; // WARNING : number of lines in files (might change if we want to increase
-    double X_q[val], X_x11[val], X_x13[val], X_x22[val], X_x1012[val], Y_q[val], Y_y11[val], Y_y13[val], Y_y22[val], Y_y1012[val],
-        U_q[val], U_u1[val], U_u3[val], U_u11[val], U_u20[val], W_q[val], W_v1[val], W_v3[val], W_t[val];
-
-    fu = fopen("data/U_func.dat", "r");
-    for (i = 0; i < val; i++)
-        fscanf(fu, "%lf %lf %lf %lf %lf\n", &U_q[i], &U_u1[i], &U_u3[i], &U_u11[i], &U_u20[i]);
-
-    acc[9] = gsl_interp_accel_alloc();
-    spline[9] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[9], U_q, U_u1, val);
-    acc[10] = gsl_interp_accel_alloc();
-    spline[10] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[10], U_q, U_u3, val);
-    acc[11] = gsl_interp_accel_alloc();
-    spline[11] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[11], U_q, U_u11, val);
-    acc[12] = gsl_interp_accel_alloc();
-    spline[12] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[12], U_q, U_u20, val);
-    fclose(fu);
-
-    fx = fopen("data/X_func.dat", "r");
-    for (i = 0; i < val; i++)
-        fscanf(fx, "%lf %lf %lf %lf %lf\n", &X_q[i], &X_x11[i], &X_x13[i], &X_x22[i], &X_x1012[i]);
-
-    acc[13] = gsl_interp_accel_alloc();
-    spline[13] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[13], X_q, X_x11, val);
-    acc[14] = gsl_interp_accel_alloc();
-    spline[14] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[14], X_q, X_x13, val);
-    acc[15] = gsl_interp_accel_alloc();
-    spline[15] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[15], X_q, X_x22, val);
-    acc[16] = gsl_interp_accel_alloc();
-    spline[16] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[16], X_q, X_x1012, val);
-    fclose(fx);
-
-    fy = fopen("data/Y_func.dat", "r");
-    for (i = 0; i < val; i++)
-        fscanf(fy, "%lf %lf %lf %lf %lf\n", &Y_q[i], &Y_y11[i], &Y_y13[i], &Y_y22[i], &Y_y1012[i]);
-    acc[17] = gsl_interp_accel_alloc();
-    spline[17] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[17], Y_q, Y_y11, val);
-    acc[18] = gsl_interp_accel_alloc();
-    spline[18] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[18], Y_q, Y_y13, val);
-    acc[19] = gsl_interp_accel_alloc();
-    spline[19] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[19], Y_q, Y_y22, val);
-    acc[20] = gsl_interp_accel_alloc();
-    spline[20] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[20], Y_q, Y_y1012, val);
-    fclose(fy);
-
-    fw = fopen("data/W_func.dat", "r");
-    for (i = 0; i < val; i++)
-        fscanf(fw, "%lf %lf %lf %lf\n", &W_q[i], &W_v1[i], &W_v3[i], &W_t[i]);
-
-    acc[21] = gsl_interp_accel_alloc();
-    spline[21] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[21], W_q, W_v1, val);
-    acc[22] = gsl_interp_accel_alloc();
-    spline[22] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[22], W_q, W_v3, val);
-    acc[23] = gsl_interp_accel_alloc();
-    spline[23] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[23], W_q, W_t, val);
-    fclose(fw);
-}
-
-void interpole_qfuncs(int dofast) {
-    FILE *fu;
-    int i;
-    const int val = 3002; // WARNING : number of lines in files (might change if we want to increase
-    double q[val], xil[val], X_x11[val], X_x13[val], X_x22[val], X_x1012[val], Y_y11[val], Y_y13[val], Y_y22[val], Y_y1012[val],
-        U_u1[val], U_u3[val], U_u11[val], U_u20[val], W_v1[val], W_v3[val], W_t[val], W_v10[val];
-
-    if (dofast == 0) {
-        fu = fopen("data/qfuncs.dat", "r");
-        for (i = 0; i < val; i++)
-            fscanf(fu, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &q[i], &xil[i],
-                   &U_u1[i], &U_u3[i], &U_u11[i], &U_u20[i], &X_x11[i], &X_x13[i], &X_x22[i], &X_x1012[i],
-                   &Y_y11[i], &Y_y13[i], &Y_y22[i], &Y_y1012[i], &W_v1[i], &W_v3[i], &W_t[i], &W_v10[i]);
-        fclose(fu);
-    } else {
-        q[0] = xil[0] = X_x11[0] = X_x13[0] = X_x22[0] = X_x1012[0] = Y_y11[0] = Y_y13[0] = Y_y22[0] = Y_y1012[0] = U_u1[0] = U_u3[0] = U_u11[0] = U_u20[0] = W_v1[0] = W_v3[0] = W_t[0] = W_v10[0] = 0.;
-        fu = fopen("data/qfuncs_fast.dat", "r");
-        for (i = 1; i < val; i++)
-            fscanf(fu, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &q[i], &xil[i],
-                   &X_x11[i], &X_x22[i], &X_x13[i], &Y_y11[i], &Y_y22[i], &Y_y13[i], &X_x1012[i], &Y_y1012[i],
-                   &W_v1[i], &W_v3[i], &W_t[i], &U_u1[i], &U_u3[i], &U_u20[i], &U_u11[i], &W_v10[i]);
-    }
-
-    acc[8] = gsl_interp_accel_alloc();
-    spline[8] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[8], q, xil, val);
-    acc[9] = gsl_interp_accel_alloc();
-    spline[9] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[9], q, U_u1, val);
-    acc[10] = gsl_interp_accel_alloc();
-    spline[10] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[10], q, U_u3, val);
-    acc[11] = gsl_interp_accel_alloc();
-    spline[11] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[11], q, U_u11, val);
-    acc[12] = gsl_interp_accel_alloc();
-    spline[12] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[12], q, U_u20, val);
-    acc[13] = gsl_interp_accel_alloc();
-    spline[13] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[13], q, X_x11, val);
-    acc[14] = gsl_interp_accel_alloc();
-    spline[14] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[14], q, X_x13, val);
-    acc[15] = gsl_interp_accel_alloc();
-    spline[15] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[15], q, X_x22, val);
-    acc[16] = gsl_interp_accel_alloc();
-    spline[16] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[16], q, X_x1012, val);
-    acc[17] = gsl_interp_accel_alloc();
-    spline[17] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[17], q, Y_y11, val);
-    acc[18] = gsl_interp_accel_alloc();
-    spline[18] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[18], q, Y_y13, val);
-    acc[19] = gsl_interp_accel_alloc();
-    spline[19] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[19], q, Y_y22, val);
-    acc[20] = gsl_interp_accel_alloc();
-    spline[20] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[20], q, Y_y1012, val);
-    acc[21] = gsl_interp_accel_alloc();
-    spline[21] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[21], q, W_v1, val);
-    acc[22] = gsl_interp_accel_alloc();
-    spline[22] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[22], q, W_v3, val);
-    acc[23] = gsl_interp_accel_alloc();
-    spline[23] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[23], q, W_t, val);
-    acc[25] = gsl_interp_accel_alloc();
-    spline[25] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[25], q, W_v10, val);
-
-    return;
-}
-
-void interpole_jfuncs(void) {
-    FILE *fu;
-    int i;
-    const int val = 3002; // WARNING : number of lines in files (might change if we want to increase
-    double q[val], B1[val], B2[val], J2[val], J3[val], J4[val], v12[val], chi12[val], zeta[val];
-
-    q[0] = v12[0] = chi12[0] = zeta[0] = 0.;
-    fu = fopen("data/jfuncs_fast.dat", "r");
-    for (i = 1; i < val; i++)
-        fscanf(fu, "%lf %lf %lf %*f %lf %lf %lf %lf %lf %lf\n", &q[i], &B1[i], &B2[i], &J2[i], &J3[i], &J4[i], &v12[i], &chi12[i], &zeta[i]);
-
-    acc[26] = gsl_interp_accel_alloc();
-    spline[26] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[26], q, B1, val);
-
-    acc[27] = gsl_interp_accel_alloc();
-    spline[27] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[27], q, B2, val);
-
-    acc[28] = gsl_interp_accel_alloc();
-    spline[28] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[28], q, J2, val);
-
-    acc[29] = gsl_interp_accel_alloc();
-    spline[29] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[29], q, J3, val);
-
-    acc[30] = gsl_interp_accel_alloc();
-    spline[30] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[30], q, J4, val);
-
-    acc[31] = gsl_interp_accel_alloc();
-    spline[31] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[31], q, v12, val);
-
-    acc[32] = gsl_interp_accel_alloc();
-    spline[32] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[32], q, chi12, val);
-
-    acc[33] = gsl_interp_accel_alloc();
-    spline[33] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[33], q, zeta, val);
-
-    return;
 }
 
 /************************************************************************************************************************************************************************/
@@ -2448,6 +2140,8 @@ void M_2(double y, double R, double M2_fin[]) {
             M2_tab[l + 7] += F_per[l] * fac;
         }
         gsl_permutation_free(p);
+        gsl_matrix_free(A);
+        gsl_matrix_free(A_inv);
     }
 
     f = y * y * dmu;
@@ -2541,7 +2235,6 @@ void jfuncs(const double q, double sum[]) {
 
     int Nint = (int)(10 * exp(qmax) * q + 512);
     double hh = (qmax - qmin) / (double)Nint;
-    // if (Nint>=20000) Nint=20000;
 
 #pragma omp parallel for reduction(+ : sum0, sum1, sum2, sum3, sum4, sum5, sum6, sum7, sum8, sum9, sum10)
     for (int i = 1; i < Nint; ++i) {
@@ -2597,6 +2290,75 @@ void jfuncs(const double q, double sum[]) {
     return;
 }
 
+void compute_and_interpolate_jfuncs(void) {
+    int i;
+    double q, logq;
+    double qmin = 0.001;
+    double qmax = 2000; // Maximum q to compute the q functions, 2000 by default
+    int nq = 3000;      // nombre de pas
+    double log_qmin = log10(qmin);
+    double log_qmax = log10(qmax);
+    double dq = (log_qmax - log_qmin) / nq;
+
+    printf("getting jfunctions...\n");
+    const int val = 3002; // WARNING : number of lines in files (might change if we want to increase)
+    double q_array[val], B1[val], B2[val], J2[val], J3[val], J4[val], v12[val], chi12[val], zeta[val];
+
+    q_array[0] = v12[0] = chi12[0] = zeta[0] = 0.;
+
+    //  Reset the value of logq
+    logq = log_qmin;
+    for (i = 1; i < val; i++) {
+        q = pow(10, logq);
+        double funcs[9];
+        jfuncs(q, funcs);
+        q_array[i] = q;
+        B1[i] = funcs[0];
+        B2[i] = funcs[1];
+        J2[i] = funcs[3];
+        J3[i] = funcs[4];
+        J4[i] = funcs[5];
+        v12[i] = funcs[6];
+        chi12[i] = funcs[7];
+        zeta[i] = funcs[8];
+        logq += dq;
+    }
+
+    acc[26] = gsl_interp_accel_alloc();
+    spline[26] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[26], q_array, B1, val);
+
+    acc[27] = gsl_interp_accel_alloc();
+    spline[27] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[27], q_array, B2, val);
+
+    acc[28] = gsl_interp_accel_alloc();
+    spline[28] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[28], q_array, J2, val);
+
+    acc[29] = gsl_interp_accel_alloc();
+    spline[29] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[29], q_array, J3, val);
+
+    acc[30] = gsl_interp_accel_alloc();
+    spline[30] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[30], q_array, J4, val);
+
+    acc[31] = gsl_interp_accel_alloc();
+    spline[31] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[31], q_array, v12, val);
+
+    acc[32] = gsl_interp_accel_alloc();
+    spline[32] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[32], q_array, chi12, val);
+
+    acc[33] = gsl_interp_accel_alloc();
+    spline[33] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[33], q_array, zeta, val);
+
+    return;
+}
+
 void qfuncs(const double q, double sum[]) {
     int i;
     double sum0 = 0, sum1 = 0, sum2 = 0, sum3 = 0, sum4 = 0, sum5 = 0, sum6 = 0, sum7 = 0, sum8 = 0, sum9 = 0, sum10 = 0, sum11 = 0, sum12 = 0, sumS = 0;
@@ -2605,7 +2367,6 @@ void qfuncs(const double q, double sum[]) {
 
     int Nint = (int)(10 * exp(qmax) * q + 512);
     double hh = (qmax - qmin) / (double)Nint;
-    // if (Nint>=20000) Nint=20000;
 
 #pragma omp parallel for reduction(+ : sum0, sum1, sum2, sum3, sum4, sum5, sum6, sum7, sum8, sum9, sum10, sum11, sum12, sumS)
     for (i = 1; i < Nint; ++i) {
@@ -2693,8 +2454,8 @@ void qfuncs(const double q, double sum[]) {
     return;
 }
 
-void write_qfuncs_fast(void) {
-    FILE *f;
+void compute_and_interpolate_qfuncs(int dofast) {
+    // FILE *f;
     int i;
     double q, logq;
     double qmin = 0.001;
@@ -2705,47 +2466,92 @@ void write_qfuncs_fast(void) {
     double dq = (log_qmax - log_qmin) / nq;
 
     printf("getting qfunctions...\n");
-    f = fopen("data/qfuncs_fast.dat", "w+");
+    const int val = 3002; // WARNING : number of lines in files (might change if we want to increase
+    double q_array[val], xil[val], X_x11[val], X_x13[val], X_x22[val], X_x1012[val], Y_y11[val], Y_y13[val], Y_y22[val], Y_y1012[val],
+        U_u1[val], U_u3[val], U_u11[val], U_u20[val], W_v1[val], W_v3[val], W_t[val], W_v10[val];
 
-    for (logq = log_qmin; logq < log_qmax; logq += dq) {
+    q_array[0] = xil[0] = X_x11[0] = X_x13[0] = X_x22[0] = X_x1012[0] = Y_y11[0] = Y_y13[0] = Y_y22[0] = Y_y1012[0] = U_u1[0] = U_u3[0] = U_u11[0] = U_u20[0] = W_v1[0] = W_v3[0] = W_t[0] = W_v10[0] = 0.;
+
+    // Reset logq in the beginning
+    logq = log_qmin;
+    for (i = 1; i < val; i++) {
         q = pow(10, logq);
         double funcs[16];
         qfuncs(q, funcs);
-        fprintf(f, "%.13le %.13le ", q, Xi_L(q));
-        for (i = 0; i < 16; i++)
-            fprintf(f, "%.13le ", funcs[i]);
-        fprintf(f, "\n");
+        q_array[i] = q;
+        xil[i] = Xi_L(q);
+        X_x11[i] = funcs[0];
+        X_x22[i] = funcs[1];
+        X_x13[i] = funcs[2];
+        Y_y11[i] = funcs[3];
+        Y_y22[i] = funcs[4];
+        Y_y13[i] = funcs[5];
+        X_x1012[i] = funcs[6];
+        Y_y1012[i] = funcs[7];
+        W_v1[i] = funcs[8];
+        W_v3[i] = funcs[9];
+        W_t[i] = funcs[10];
+        U_u1[i] = funcs[11];
+        U_u3[i] = funcs[12];
+        U_u20[i] = funcs[13];
+        U_u11[i] = funcs[14];
+        W_v10[i] = funcs[15];
+
+        logq += dq;
     }
 
-    fclose(f);
-    return;
-}
+    acc[8] = gsl_interp_accel_alloc();
+    spline[8] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[8], q_array, xil, val);
+    acc[9] = gsl_interp_accel_alloc();
+    spline[9] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[9], q_array, U_u1, val);
+    acc[10] = gsl_interp_accel_alloc();
+    spline[10] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[10], q_array, U_u3, val);
+    acc[11] = gsl_interp_accel_alloc();
+    spline[11] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[11], q_array, U_u11, val);
+    acc[12] = gsl_interp_accel_alloc();
+    spline[12] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[12], q_array, U_u20, val);
+    acc[13] = gsl_interp_accel_alloc();
+    spline[13] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[13], q_array, X_x11, val);
+    acc[14] = gsl_interp_accel_alloc();
+    spline[14] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[14], q_array, X_x13, val);
+    acc[15] = gsl_interp_accel_alloc();
+    spline[15] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[15], q_array, X_x22, val);
+    acc[16] = gsl_interp_accel_alloc();
+    spline[16] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[16], q_array, X_x1012, val);
+    acc[17] = gsl_interp_accel_alloc();
+    spline[17] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[17], q_array, Y_y11, val);
+    acc[18] = gsl_interp_accel_alloc();
+    spline[18] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[18], q_array, Y_y13, val);
+    acc[19] = gsl_interp_accel_alloc();
+    spline[19] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[19], q_array, Y_y22, val);
+    acc[20] = gsl_interp_accel_alloc();
+    spline[20] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[20], q_array, Y_y1012, val);
+    acc[21] = gsl_interp_accel_alloc();
+    spline[21] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[21], q_array, W_v1, val);
+    acc[22] = gsl_interp_accel_alloc();
+    spline[22] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[22], q_array, W_v3, val);
+    acc[23] = gsl_interp_accel_alloc();
+    spline[23] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[23], q_array, W_t, val);
+    acc[25] = gsl_interp_accel_alloc();
+    spline[25] = gsl_spline_alloc(gsl_interp_cspline, val);
+    gsl_spline_init(spline[25], q_array, W_v10, val);
 
-void write_jfuncs_fast(void) {
-    FILE *f;
-    int i;
-    double q, logq;
-    double qmin = 0.001;
-    double qmax = 2000; // Maximum q to compute the q functions, 2000 by default
-    int nq = 3000;      // nombre de pas
-    double log_qmin = log10(qmin);
-    double log_qmax = log10(qmax);
-    double dq = (log_qmax - log_qmin) / nq;
-
-    printf("getting jfunctions...\n");
-    f = fopen("data/jfuncs_fast.dat", "w+");
-
-    for (logq = log_qmin; logq < log_qmax; logq += dq) {
-        q = pow(10, logq);
-        double funcs[9];
-        jfuncs(q, funcs);
-        fprintf(f, "%.13le ", q);
-        for (i = 0; i < 9; i++)
-            fprintf(f, "%.13le ", funcs[i]);
-        fprintf(f, "\n");
-    }
-
-    fclose(f);
     return;
 }
 
@@ -2790,38 +2596,12 @@ void initialize_CLEFT(char pk_filename[]) {
     interpole(1, pk_filename, nLines, nHeader);
 
     // Compute CLEFT components
-    write_R1();
-    write_R2();
-    write_Qn();
-
-    interpole(2, "data/func_R1.dat", 11001, 0);
-    interpole(3, "data/func_R2.dat", 11001, 0);
-    interpole(4, "data/func_Q1.dat", 3001, 0);
-    interpole(5, "data/func_Q2.dat", 3001, 0);
-    interpole(6, "data/func_Q5.dat", 3001, 0);
-    interpole(7, "data/func_Q8.dat", 3001, 0);
-    interpole(24, "data/func_Qs.dat", 3001, 0);
-
-    /*
-    q_function(); // Compute q functions and Xi_L
-    interpole(8,"data/Xi_L_func.dat", 3002, 0);
-    interp_qfunc();
-    exit(1);
-    */
-
-    // write_qfuncs();
-
-    write_qfuncs_fast();
-    interpole_qfuncs(1);
-
-    write_jfuncs_fast();
-    interpole_jfuncs();
-
+    compute_and_interpolate_R1();
+    compute_and_interpolate_R2();
+    compute_and_interpolate_Qn();
+    compute_and_interpolate_qfuncs(1);
+    compute_and_interpolate_jfuncs();
     write_cleft(pk_filename);
-
-    // write_Xi_R();
-    // write_V12();
-    // write_Sigma();
 
     // Finalize
 
@@ -2835,6 +2615,12 @@ void initialize_CLEFT(char pk_filename[]) {
 /**********\\MAIN FUNCTION\\***************************************************************************************************************************************/
 
 int main(int argc, char *argv[]) {
+    double start_time, end_time;
+    start_time = omp_get_wtime();
+
     initialize_CLEFT(argv[1]);
+
+    end_time = omp_get_wtime();
+    printf("Total time needed %f minutes\n", (end_time - start_time) / 60.);
     return 0;
 }
