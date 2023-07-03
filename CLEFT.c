@@ -1,11 +1,13 @@
 /* ============================================================ *
- * AUTHOR:       Sylvain de la Torre		                *
- * CONTRIBUTORS: Antoine Rocher, Michel-Andrès Breton		*
- * 							        *
- * Code for computing CLEFT predictions based on                *
- * Vlah, Castorina & White 2016                                 *
+ * CONTRIBUTORS:    Antoine Rocher, Michel-Andrès Breton,       *
+ *                  Sylvain de la Torre, Martin Kärcher         *
+ * 							                                    *
+ * Code for computing Zel'dovich, CLPT and CLEFT predictions    *
+ * based on [White (2014)], [Wang, Reid & White (2014)] and     *
+ * [Vlah, Castorina & White 2016]                               *
  * ============================================================ */
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -23,16 +25,19 @@
 /************************************************************************************************************************************************************************/
 /***********\\Global variable\\******************************************************************************************************************************************/
 
-const int r_max = 250;          // Maximum scale for CLEFT (see Code_RSD_CLPT.c)
-const size_t size = 100;        // workspace size for cquad
-const double xpivot_UYXi = 100; // argument in Bessel function where we start to use approximate form (and qawo integration) for Xi_L, U and Y functions
-const double xpivot_TV = 600;   // argument in Bessel function where we start to use approximate form (and qawo integration) for T and V functions
-const double dmu_M0 = 0.001;    // Integration step for M0 function
-const double dmu_M1 = 0.000625; // Integration step for M1 function
-const double dmu_M2 = 0.001;    // Integration step for M2 function
-double kmin;                    // minimum k in the power spectrum file (defined in main function)
-double kmax;                    // minimum k in the power spectrum file (defined in main function)
-double q_v[3];                  // unit vector q_i, q_j, q_k
+bool do_zeldovich = false;          // Compute Zel'dovich ingredients
+bool do_CLPT = false;               // Compute CLPT ingredients
+bool do_CLEFT = false;              // Compute CLEFT ingredients
+const unsigned int r_max = 250;     // Maximum scale for CLEFT (see Code_RSD_CLPT.c)
+const size_t size = 100;            // workspace size for cquad
+const double xpivot_UYXi = 100;     // argument in Bessel function where we start to use approximate form (and qawo integration) for Xi_L, U and Y functions
+const double xpivot_TV = 600;       // argument in Bessel function where we start to use approximate form (and qawo integration) for T and V functions
+const unsigned int nbins_M0 = 2000; // Integration step for M0 function
+const unsigned int nbins_M1 = 3200; // Integration step for M1 function
+const unsigned int nbins_M2 = 2000; // Integration step for M2 function
+double kmin;                        // minimum k in the power spectrum file (defined in main function)
+double kmax;                        // minimum k in the power spectrum file (defined in main function)
+double q_v[3];                      // unit vector q_i, q_j, q_k
 
 struct my_f_params2 {
     double a;
@@ -115,8 +120,8 @@ static const double A[] = {
 
 double gl_int(double a, double b, double (*f)(double, void *), void *prms) {
     double integral = 0.0;
-    double c = 0.5 * (b - a);
-    double d = 0.5 * (b + a);
+    const double c = 0.5 * (b - a);
+    const double d = 0.5 * (b + a);
     double dum;
     const double *px = &x[NUM_OF_POSITIVE_ZEROS - 1];
     const double *pA = &A[NUM_OF_POSITIVE_ZEROS - 1];
@@ -128,17 +133,17 @@ double gl_int(double a, double b, double (*f)(double, void *), void *prms) {
 }
 
 void gl_int6(double a, double b, void (*f)(double, double, double[]), void *prms, double result[], int n) {
-    int i;
+    unsigned int i;
     double integral[n];
     for (i = 0; i < n; i++)
         integral[i] = 0;
-    double c = 0.5 * (b - a);
-    double d = 0.5 * (b + a);
+    const double c = 0.5 * (b - a);
+    const double d = 0.5 * (b + a);
     double dum;
     const double *px = &x[NUM_OF_POSITIVE_ZEROS - 1];
     const double *pA = &A[NUM_OF_POSITIVE_ZEROS - 1];
     double outi[n], outs[n];
-    double R = *(double *)prms;
+    const double R = *(double *)prms;
 
     for (; px >= x; pA--, px--) {
         dum = c * *px;
@@ -168,7 +173,7 @@ double int_cquad(double func(double, void *), double alpha) {
 
 double int_cquad_pivot_UYXi(double func(double, void *), double alpha) {
     double result, error;
-    double q = alpha;
+    const double q = alpha;
     gsl_function F;
     F.function = func;
     F.params = &alpha;
@@ -181,7 +186,7 @@ double int_cquad_pivot_UYXi(double func(double, void *), double alpha) {
 
 double int_cquad_pivot_TV(double func(double, void *), double alpha) {
     double result, error;
-    double q = alpha;
+    const double q = alpha;
     gsl_function F;
     F.function = func;
     F.params = &alpha;
@@ -449,7 +454,7 @@ int delta_K(int i, int j) {
 
 // R_1_tilde function
 double fRt1(double x, void *p) {
-    double r = *(double *)p;
+    const double r = *(double *)p;
     return (r * r * (1. - x * x) * (1. - x * x)) / (1. + r * r - 2. * x * r);
 }
 
@@ -459,7 +464,7 @@ double Rt_1(double r) {
 
 // R_2_tilde function
 double fRt2(double x, void *p) {
-    double r = *(double *)p;
+    const double r = *(double *)p;
     return ((1. - x * x) * r * x * (1. - x * r)) / (1. + r * r - 2. * r * x);
 }
 
@@ -469,7 +474,7 @@ double Rt_2(double r) {
 
 // R1 function
 double fR_1(double r, void *p) {
-    double k = *(double *)p;
+    const double k = *(double *)p;
     return P_L(k * r) * Rt_1(r);
 }
 
@@ -485,7 +490,7 @@ double R1(double k) {
 
     gsl_integration_qag(&F, 0, 1., 0, 1e-3, 200, 6, w, &result1, &error);
     if (kmax / k > 1 + 1e-8)
-        gsl_integration_qag(&F, 1., kmax / k, 0, 1e-3, 200, 6, w, &result2, &error); // Kmax/k car k*r<=! kmax sinon Pk = 0
+        gsl_integration_qag(&F, 1., kmax / k, 0, 1e-3, 200, 6, w, &result2, &error);
     gsl_integration_workspace_free(w);
 
     return (k * k * k) / (4. * M_PI * M_PI) * P_L(k) * (result1 + result2);
@@ -493,7 +498,7 @@ double R1(double k) {
 
 // R2 function
 double fR_2(double r, void *p) {
-    double k = *(double *)p;
+    const double k = *(double *)p;
     return P_L(k * r) * Rt_2(r);
 }
 
@@ -515,7 +520,7 @@ double R2(double k) {
 
 void compute_and_interpolate_R1(void) {
     printf("getting R function 1/2...\n");
-    const int nk = 11000; // Nombre de points
+    const int nk = 11000; // Number of points
     const double log_kmin = log10(kmin);
     const double log_kmax = log10(kmax);
     const double dk = (log_kmax - log_kmin) / nk;
@@ -523,7 +528,7 @@ void compute_and_interpolate_R1(void) {
     double R1_array[nk + 1];
     double k_array[nk + 1];
     for (int i = 0; i <= nk; i++) {
-        double k = pow(10, log_kmin + i * dk);
+        const double k = pow(10, log_kmin + i * dk);
         R1_array[i] = R1(k);
         k_array[i] = k;
     }
@@ -536,15 +541,15 @@ void compute_and_interpolate_R1(void) {
 
 void compute_and_interpolate_R2(void) {
     printf("getting R function 2/2...\n");
-    int nk = 11000; // Nombre de points
-    double log_kmin = log10(kmin);
-    double log_kmax = log10(kmax);
-    double dk = (log_kmax - log_kmin) / nk;
+    const unsigned int nk = 11000; // Number of points
+    const double log_kmin = log10(kmin);
+    const double log_kmax = log10(kmax);
+    const double dk = (log_kmax - log_kmin) / nk;
 
     double R2_array[nk + 1];
     double k_array[nk + 1];
     for (int i = 0; i <= nk; i++) {
-        double k = pow(10, log_kmin + i * dk);
+        const double k = pow(10, log_kmin + i * dk);
         R2_array[i] = R2(k);
         k_array[i] = k;
     }
@@ -580,10 +585,10 @@ double Qt_s(double r, double x) {
 
 double lg_Q_n(double x, void *p) {
     struct my_f_params3 *params = (struct my_f_params3 *)p;
-    double k = (params->a);
-    double r = (params->b);
-    double n = (params->c);
-    double y_p = 1. + r * r - 2. * x * r;
+    const double k = (params->a);
+    const double r = (params->b);
+    const double n = (params->c);
+    const double y_p = 1. + r * r - 2. * x * r;
     if (y_p < 0)
         return 0;
     else {
@@ -604,8 +609,8 @@ double lg_Q_n(double x, void *p) {
 
 double fQ_n(double r, void *p) {
     struct my_f_params2 *params = (struct my_f_params2 *)p;
-    double k = (params->a);
-    double n = (params->b);
+    const double k = (params->a);
+    const double n = (params->b);
     struct my_f_params3 par = {k, r, n};
     return P_L(k * r) * gl_int(-1, 1, &lg_Q_n, &par);
 }
@@ -636,8 +641,8 @@ double Q_n(int n, double k) {
 
 void compute_and_interpolate_Qn(void) {
     // FILE* f;
-    int n;
-    const int nk = 3000; // Nombre de points
+    unsigned int n;
+    const unsigned int nk = 3000; // Number of points
     const double log_kmin = log10(kmin);
     const double log_kmax = log10(kmax);
     const double dk = (log_kmax - log_kmin) / nk;
@@ -647,7 +652,7 @@ void compute_and_interpolate_Qn(void) {
         switch (n) {
         case 1:
             for (int i = 0; i <= nk; i++) {
-                double k = pow(10, log_kmin + i * dk);
+                const double k = pow(10, log_kmin + i * dk);
                 Q1_array[i] = Q_n(1, k);
                 k_array[i] = k;
             }
@@ -657,7 +662,7 @@ void compute_and_interpolate_Qn(void) {
             break;
         case 2:
             for (int i = 0; i <= nk; i++) {
-                double k = pow(10, log_kmin + i * dk);
+                const double k = pow(10, log_kmin + i * dk);
                 Q2_array[i] = Q_n(2, k);
                 k_array[i] = k;
             }
@@ -667,7 +672,7 @@ void compute_and_interpolate_Qn(void) {
             break;
         case 5:
             for (int i = 0; i <= nk; i++) {
-                double k = pow(10, log_kmin + i * dk);
+                const double k = pow(10, log_kmin + i * dk);
                 Q5_array[i] = Q_n(5, k);
                 k_array[i] = k;
             }
@@ -677,7 +682,7 @@ void compute_and_interpolate_Qn(void) {
             break;
         case 8:
             for (int i = 0; i <= nk; i++) {
-                double k = pow(10, log_kmin + i * dk);
+                const double k = pow(10, log_kmin + i * dk);
                 Q8_array[i] = Q_n(8, k);
                 k_array[i] = k;
             }
@@ -687,7 +692,7 @@ void compute_and_interpolate_Qn(void) {
             break;
         case 9:
             for (int i = 0; i <= nk; i++) {
-                double k = pow(10, log_kmin + i * dk);
+                const double k = pow(10, log_kmin + i * dk);
                 Qs_array[i] = Q_n(9, k);
                 k_array[i] = k;
             }
@@ -706,12 +711,12 @@ void compute_and_interpolate_Qn(void) {
 /************************\\Compute Xi linear\\********************************************************************************************************************/
 
 double fXi_L(double k, void *p) {
-    double q = *(double *)p;
+    const double q = *(double *)p;
     return P_L(k) * k * k * func_bessel_0(k * q);
 }
 
 double fXi_L_qawo(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return alpha * P_L(k) * k;
 }
 
@@ -745,12 +750,12 @@ double Xi_L(double q) {
 /**************\\U function\\**************************************************************************************************************************************/
 // U^1(q)
 double fU_1(double k, void *p) {
-    double q = *(double *)p;
+    const double q = *(double *)p;
     return -P_L(k) * k * func_bessel_1(k * q);
 }
 
 double fU_1_qawo(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return alpha * P_L(k);
 }
 
@@ -782,12 +787,12 @@ double U_1(double q) {
 
 // U^3(q)
 double fU_3(double k, void *p) {
-    double q = *(double *)p;
+    const double q = *(double *)p;
     return -5. / 21. * R_1(k) * k * func_bessel_1(k * q);
 }
 
 double fU_3_qawo(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return +5. / 21. * alpha * R_1(k);
 }
 
@@ -819,12 +824,12 @@ double U_3(double q) {
 
 // U_11(q)
 double fU_11(double k, void *p) {
-    double q = *(double *)p;
+    const double q = *(double *)p;
     return -6. / 7. * k * (R_1(k) + R_2(k)) * func_bessel_1(k * q);
 }
 
 double fU_11_qawo(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return 6. / 7. * alpha * (R_1(k) + R_2(k));
 }
 
@@ -856,12 +861,12 @@ double U_11(double q) {
 
 // U_20(q)
 double fU_20(double k, void *p) {
-    double q = *(double *)p;
+    const double q = *(double *)p;
     return -3. / 7. * k * Q_8(k) * func_bessel_1(k * q);
 }
 
 double fU_20_qawo(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return 3. / 7. * alpha * Q_8(k);
 }
 
@@ -900,8 +905,8 @@ double get_U(double q) {
 /*******************\\X FUNCTIONS\\*****************************************************************************************************************************/
 // X^11(q)
 double fX_11(double k, void *p) {
-    double q = *(double *)p;
-    double x = k * q;
+    const double q = *(double *)p;
+    const double x = k * q;
     return P_L(k) * (2. / 3. - 2. * func_bessel_1(x) / x);
 }
 
@@ -911,8 +916,8 @@ double X_11(double q) {
 
 // X^22(q)
 double fX_22(double k, void *p) {
-    double q = *(double *)p;
-    double x = k * q;
+    const double q = *(double *)p;
+    const double x = k * q;
     return 9. / 98. * Q_1(k) * (2. / 3. - 2. * func_bessel_1(x) / (x));
 }
 
@@ -922,8 +927,8 @@ double X_22(double q) {
 
 // X^13(q)
 double fX_13(double k, void *p) {
-    double q = *(double *)p;
-    double x = k * q;
+    const double q = *(double *)p;
+    const double x = k * q;
     return 5. / 21. * R_1(k) * (2. / 3. - 2. * func_bessel_1(x) / x);
 }
 
@@ -933,8 +938,8 @@ double X_13(double q) {
 
 // X_10^12(q)
 double fX_10_12(double k, void *p) {
-    double q = *(double *)p;
-    double x = k * q;
+    const double q = *(double *)p;
+    const double x = k * q;
     return 1. / 14. * (2. * (R_1(k) - R_2(k)) + 3. * R_1(k) * sin(k * q) / (k * q) - 3. * (3. * R_1(k) + 4. * R_2(k) + 2. * Q_5(k)) * func_bessel_1(x) / x);
 }
 
@@ -946,18 +951,18 @@ double X_10_12(double q) {
 /*******************Y FUNCTIONS*****************************************************************************************************************************/
 // Y^11(q)
 double fY_11(double k, void *p) {
-    double q = *(double *)p;
-    double x = k * q;
+    const double q = *(double *)p;
+    const double x = k * q;
     return P_L(k) * (-2. * sin(k * q) / (k * q) + 6. * func_bessel_1(x) / x);
 }
 
 double fY_11_qawo_1_over_2(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return -2 * alpha * P_L(k) / k;
 }
 
 double fY_11_qawo_2_over_2(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return -alpha * P_L(k) * 6 / (k * k);
 }
 
@@ -997,18 +1002,18 @@ double Y_11(double q) {
 
 // Y^22(q)
 double fY_22(double k, void *p) {
-    double q = *(double *)p;
-    double x = k * q;
+    const double q = *(double *)p;
+    const double x = k * q;
     return 9. / 98. * Q_1(k) * (-2. * sin(k * q) / (k * q) + 6. * func_bessel_1(x) / x);
 }
 
 double fY_22_qawo_1_over_2(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return 9. / 98. * alpha * Q_1(k) * (-2.) / k;
 }
 
 double fY_22_qawo_2_over_2(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return -9. / 98. * alpha * Q_1(k) * 6. / (k * k);
 }
 
@@ -1048,18 +1053,18 @@ double Y_22(double q) {
 
 // Y^13(q)
 double fY_13(double k, void *p) {
-    double q = *(double *)p;
-    double x = k * q;
+    const double q = *(double *)p;
+    const double x = k * q;
     return 5. / 21. * R_1(k) * (-2. * sin(k * q) / (k * q) + 6. * func_bessel_1(x) / x);
 }
 
 double fY_13_qawo_1_over_2(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return 5. / 21. * alpha * R_1(k) * (-2.) / k;
 }
 
 double fY_13_qawo_2_over_2(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return -5. / 21. * alpha * R_1(k) * 6. / (k * k);
 }
 
@@ -1099,18 +1104,18 @@ double Y_13(double q) {
 
 // Y^10_12(q)
 double fY_10_12(double k, void *p) {
-    double q = *(double *)p;
-    double x = q * k;
+    const double q = *(double *)p;
+    const double x = q * k;
     return -3. / 14. * (3. * R_1(k) + 4. * R_2(k) + 2. * Q_5(k)) * (sin(k * q) / (k * q) - 3. * func_bessel_1(x) / x);
 }
 
 double fY_10_12_qawo_1_over_2(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return -3. / 14. * alpha * (3. * R_1(k) + 4. * R_2(k) + 2. * Q_5(k)) / k;
 }
 
 double fY_10_12_qawo_2_over_2(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return 3. / 14. * alpha * (3. * R_1(k) + 4. * R_2(k) + 2. * Q_5(k)) * (-3.) / (k * k);
 }
 
@@ -1153,18 +1158,18 @@ double Y_10_12(double q) {
 // V^112_1(q) + S^112(q)
 
 double fV1_112(double k, void *p) {
-    double q = *(double *)p;
-    double x = k * q;
+    const double q = *(double *)p;
+    const double x = k * q;
     return -3. / 7. * R_1(k) * func_bessel_1(x) / k + 3. / (7. * k) * (2. * R_1(k) + 4. * R_2(k) + Q_1(k) + 2. * Q_2(k)) * func_bessel_2(x) / x;
 }
 
 double fV1_112_qawo_1_over_2(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return 3. / 7. * alpha * R_1(k) / (k * k);
 }
 
 double fV1_112_qawo_2_over_2(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return -3. / (7. * k) * alpha * (2. * R_1(k) + 4. * R_2(k) + Q_1(k) + 2. * Q_2(k)) / (k * k);
 }
 
@@ -1206,18 +1211,18 @@ double V1_112(double q) {
 // V^112_3(q)+ S^112	(q)
 
 double fV3_112(double k, void *p) {
-    double q = *(double *)p;
-    double x = k * q;
+    const double q = *(double *)p;
+    const double x = k * q;
     return -3. / 7. * Q_1(k) * func_bessel_1(x) / k + 3. / (7. * k) * (2. * R_1(k) + 4. * R_2(k) + Q_1(k) + 2. * Q_2(k)) * func_bessel_2(x) / x;
 }
 
 double fV3_112_qawo_1_over_2(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return 3. / 7. * alpha * Q_1(k) / (k * k);
 }
 
 double fV3_112_qawo_2_over_2(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return -3. / (7. * k) * alpha * (2. * R_1(k) + 4. * R_2(k) + Q_1(k) + 2. * Q_2(k)) / (k * k);
 }
 
@@ -1260,12 +1265,12 @@ double V3_112(double q) {
 
 // V^10(q)
 double fV_10(double k, void *p) {
-    double q = *(double *)p;
+    const double q = *(double *)p;
     return -1. / 7. * Q_s(k) * k * func_bessel_1(k * q);
 }
 
 double fV_10_qawo(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return -1. / 7. * alpha * Q_s(k);
 }
 
@@ -1297,13 +1302,13 @@ double V_10(double q) {
 
 // T^112(q)
 double fT_112(double k, void *p) {
-    double q = *(double *)p;
-    double x = k * q;
+    const double q = *(double *)p;
+    const double x = k * q;
     return -3. / 7. * (2. * R_1(k) + 4. * R_2(k) + Q_1(k) + 2. * Q_2(k)) * func_bessel_3(x) / k;
 }
 
 double fT_112_qawo(double k, void *p) {
-    double alpha = *(double *)p;
+    const double alpha = *(double *)p;
     return -3. / 7. * alpha * (2. * R_1(k) + 4. * R_2(k) + Q_1(k) + 2. * Q_2(k)) / (k * k);
 }
 
@@ -1370,7 +1375,7 @@ double Aij_11(int i, int j, double q) {
     return iX_11(q) * delta_K(i, j) + iY_11(q) * q_v[i] * q_v[j];
 }
 
-double Aloop_ij(int i, int j, double q) {
+double A_1loop_ij(int i, int j, double q) {
     return Aij_22(i, j, q) + 2. * Aij_13(i, j, q);
 }
 
@@ -1384,10 +1389,15 @@ double A10_ij(int i, int j, double q) {
 
 // Initialize A matrix
 void get_M(double q, gsl_matrix **A) {
-    int i, j;
+    unsigned int i, j;
     for (i = 0; i < 3; i++) {
-        for (j = 0; j < 3; j++)
-            gsl_matrix_set(*A, i, j, Aij_11(i, j, q));
+        for (j = 0; j < 3; j++) {
+            if (do_CLPT) {
+                gsl_matrix_set(*A, i, j, Aij(i, j, q));
+            } else { // Only keep Zel'dovich solution (+ 1-loop correction expanded for CLEFT)
+                gsl_matrix_set(*A, i, j, Aij_11(i, j, q));
+            }
+        }
     }
 }
 
@@ -1458,15 +1468,18 @@ double fW_2dot(int i, int n, int m, double q) {
 /**************\\M_0 integral\\*****************************************************************************************************************************************/
 
 void M_0(double y, double R, double M0_fin[]) {
-    int l, m, o;
-    double mu, q_n, det_A, y_t[3], q[3], U[3], U1[3], G[3][3], U11[3], U20[3], V10[3], V12[3], B2[3], g[3], Gamma[3][3][3], W[3][3][3], W_fin[3][3][3], A10[3][3], Ups[3][3], Xi, trG, s, fac, F_b[13], M0_tab[13];
-    double dmu = dmu_M0;
+    unsigned int i, j, k;
+    const unsigned int n_ingredients = 13;
+    double mu, q_n, det_A, y_t[3], q[3], U[3], U1[3], G[3][3], U11[3], U20[3], V10[3], V12[3], B2[3], g[3], Gamma[3][3][3], W[3][3][3], W_fin[3][3][3], A10[3][3], Ups[3][3], Xi, trG, s, fac, F_b[n_ingredients], M0_tab[n_ingredients];
+    const double dmu = 2. / nbins_M0;
     int signum = 0;
+    const double mumin = -1 + 0.5 * dmu;
 
-    for (l = 0; l < 13; l++)
-        M0_tab[l] = 0; // Inizialise at each step
+    for (i = 0; i < n_ingredients; i++)
+        M0_tab[i] = 0; // Inizialise at each step
 
-    for (mu = -1; mu <= 1; mu += dmu) { // Decomp integrale dtheta en somme de riemann int=somme f(x_i)*delta_x
+    for (unsigned int ibin = 0; ibin < nbins_M0; ibin++) { // Compute Riemann integral as int=Sum f(x_i)*delta_x
+        mu = mumin + ibin * dmu;
         gsl_matrix *A = gsl_matrix_calloc(3, 3);
         gsl_matrix *A_inv = gsl_matrix_calloc(3, 3); // Declaration of matrix A (3x3)
 
@@ -1482,223 +1495,251 @@ void M_0(double y, double R, double M0_fin[]) {
         q_n = sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2]); // norm of q
 
         // Unit vector
-        for (l = 0; l < 3; l++)
-            q_v[l] = q[l] / q_n;
+        for (i = 0; i < 3; i++)
+            q_v[i] = q[i] / q_n;
 
         /******** Compute functions ****************************************/
 
         // Xi linear
         Xi = iXi_L(q_n);
+        // printf("%.13lf %.13lf # q, Xi\n", q_n, Xi);
 
         // U functions
-        for (l = 0; l < 3; l++) {
-            U[l] = get_U(q_n) * q_v[l];
-            U1[l] = iU_1(q_n) * q_v[l];
-            U11[l] = iU_11(q_n) * q_v[l];
-            U20[l] = iU_20(q_n) * q_v[l];
-        }
-
-        // V functions
-        for (l = 0; l < 3; l++) {
-            V10[l] = iV_10(q_n) * q_v[l];
-            V12[l] = iV_12(q_n) * q_v[l];
-        }
-
-        // B function
-
-        for (l = 0; l < 3; l++) {
-            B2[l] = iB_2(q_n) * q_v[l];
+        const double U_tmp = get_U(q_n);
+        const double U_1_tmp = iU_1(q_n);
+        const double U_11_tmp = iU_11(q_n);
+        const double U_20_tmp = iU_20(q_n);
+        for (i = 0; i < 3; i++) {
+            U[i] = U_tmp * q_v[i];
+            U1[i] = U_1_tmp * q_v[i];
+            U11[i] = U_11_tmp * q_v[i];
+            U20[i] = U_20_tmp * q_v[i];
         }
 
         // 	Matix A
         gsl_permutation *p = gsl_permutation_alloc(3);
-        get_M(q_n, &A); // Initialize matix A (A_11)
+        get_M(q_n, &A); // Initialize matix A (A_11 for Zel'dovich and CLEFT)
         gsl_linalg_LU_decomp(A, p, &signum);
         det_A = gsl_linalg_LU_det(A, signum); // Determinant of A
         gsl_linalg_LU_invert(A, p, A_inv);    // Inverse of matrix A
 
         // 	g_i components
-        for (l = 0; l < 3; l++) {
-            g[l] = 0;
-            for (m = 0; m < 3; m++)
-                g[l] += g_i(l, m, A_inv, y_t);
+        for (i = 0; i < 3; i++) {
+            g[i] = 0;
+            for (j = 0; j < 3; j++)
+                g[i] += g_i(i, j, A_inv, y_t);
         }
 
         // 	G_ij components
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                G[l][m] = G_ij(l, m, A_inv, g);
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++)
+                G[i][j] = G_ij(i, j, A_inv, g);
         }
 
         trG = 0;
-        for (l = 0; l < 3; l++)
-            trG += G[l][l];
+        for (i = 0; i < 3; i++)
+            trG += G[i][i];
 
         // Gamma_ijk
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                for (o = 0; o < 3; o++)
-                    Gamma[l][m][o] = Gamma_ijk(l, m, o, A_inv, g);
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                for (k = 0; k < 3; k++)
+                    Gamma[i][j][k] = Gamma_ijk(i, j, k, A_inv, g);
             }
         }
 
         // 	W_ijk
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                for (o = 0; o < 3; o++) {
-                    W[l][m][o] = W_112(l, m, o, q_n);
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                for (k = 0; k < 3; k++) {
+                    W[i][j][k] = W_112(i, j, k, q_n);
                 }
             }
         }
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                for (o = 0; o < 3; o++) {
-                    W_fin[l][m][o] = W[l][m][o] + W[o][l][m] + W[m][o][l];
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                for (k = 0; k < 3; k++) {
+                    W_fin[i][j][k] = W[i][j][k] + W[k][i][j] + W[j][k][i];
                 }
             }
         }
 
         // 	A^10_ij
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                A10[l][m] = A10_ij(l, m, q_n);
-        }
-
-        // 	Ups_ij
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                double j2 = iJ_2(q_n);
-                double j3 = iJ_3(q_n);
-                double j4 = iJ_4(q_n);
-                if (l == m)
-                    Ups[l][m] = 2 * j3 * j3;
-                else
-                    Ups[l][m] = 0;
-                Ups[l][m] += q_v[l] * q_v[m] * (3 * j2 * j2 + 4 * j2 * j3 + 2 * j2 * j4 + 2 * j3 * j3 + 4 * j3 * j4 + j4 * j4);
-                Ups[l][m] *= 2;
-            }
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++)
+                A10[i][j] = A10_ij(i, j, q_n);
         }
 
         // Sum over all the bias component
-        for (l = 0; l < 13; l++)
-            F_b[l] = 0;
+        for (i = 0; i < 13; i++)
+            F_b[i] = 0;
 
         // "1" term
+        F_b[0] = 1;
+
         s = 0;
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                for (o = 0; o < 3; o++) {
-                    s += Gamma[l][m][o] * W_fin[l][m][o];
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                for (k = 0; k < 3; k++) {
+                    s += Gamma[i][j][k] * W_fin[i][j][k];
                 }
             }
         }
         F_b[0] += s / 6.;
-
-        s = 0;
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                s += G[l][m] * Aloop_ij(l, m, q_n);
+        if (do_CLEFT) {
+            s = 0;
+            for (i = 0; i < 3; i++) {
+                for (j = 0; j < 3; j++)
+                    s += G[i][j] * A_1loop_ij(i, j, q_n);
+            }
+            F_b[0] -= 0.5 * s; // TBC
         }
-        F_b[0] += 1.0 - 0.5 * s; // TBC
-
         // b1
         s = 0;
-        for (l = 0; l < 3; l++)
-            s += U[l] * g[l];
+
+        for (i = 0; i < 3; i++) {
+            if (do_zeldovich)
+                s += U1[i] * g[i];
+            else
+                s += U[i] * g[i];
+        }
+
         F_b[1] -= 2. * s;
 
         s = 0;
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                s += A10[l][m] * G[l][m];
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++)
+                s += A10[i][j] * G[i][j]; // VERIF SDLT
         }
         F_b[1] -= s;
-
-        // b2
-        s = 0;
-        for (l = 0; l < 3; l++)
-            s += U20[l] * g[l];
-        F_b[2] -= s;
-        s = 0;
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                s += U1[l] * U1[m] * G[l][m];
-        }
-        F_b[2] -= s;
 
         // b1²
         F_b[3] += Xi;
         s = 0;
-        for (l = 0; l < 3; l++)
-            s += U11[l] * g[l];
+        for (i = 0; i < 3; i++)
+            s += U11[i] * g[i];
+
         F_b[3] -= s;
         s = 0;
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                s += U1[l] * U1[m] * G[l][m];
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++)
+                if (do_CLPT)
+                    s += U[i] * U[j] * G[i][j];
+                else
+                    s += U1[i] * U1[j] * G[i][j];
         }
         F_b[3] -= s;
 
-        // b1.b2
-        s = 0;
-        for (l = 0; l < 3; l++)
-            s += U1[l] * g[l];
-        F_b[4] -= 2. * Xi * s;
+        if (!do_zeldovich) {
+            // b2
+            s = 0;
+            for (i = 0; i < 3; i++)
+                s += U20[i] * g[i];
+            F_b[2] -= s;
 
-        // b2²
-        F_b[5] = 0.5 * Xi * Xi;
+            s = 0;
+            for (i = 0; i < 3; i++) {
+                for (j = 0; j < 3; j++)
+                    if (do_CLEFT)
+                        s += U1[i] * U1[j] * G[i][j];
+                    else
+                        s += U[i] * U[j] * G[i][j];
+            }
+            F_b[2] -= s;
 
-        // bs2
-        s = 0;
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                s += Ups[l][m] * G[l][m];
+            // b1.b2
+            s = 0;
+            for (i = 0; i < 3; i++)
+                if (do_CLEFT)
+                    s += U1[i] * g[i];
+                else
+                    s += U[i] * g[i];
+            F_b[4] -= 2. * Xi * s;
+
+            // b2²
+            F_b[5] = 0.5 * Xi * Xi;
+
+            if (do_CLEFT) {
+                // V functions
+                const double V_10_tmp = iV_10(q_n);
+                const double V_12_tmp = iV_12(q_n);
+                for (i = 0; i < 3; i++) {
+                    V10[i] = V_10_tmp * q_v[i];
+                    V12[i] = V_12_tmp * q_v[i];
+                }
+
+                // B function
+                const double B_2_tmp = iB_2(q_n);
+                for (i = 0; i < 3; i++) {
+                    B2[i] = B_2_tmp * q_v[i];
+                }
+
+                // 	Ups_ij
+                const double j2 = iJ_2(q_n);
+                const double j3 = iJ_3(q_n);
+                const double j4 = iJ_4(q_n);
+                for (i = 0; i < 3; i++) {
+                    for (j = 0; j < 3; j++) {
+                        if (i == j)
+                            Ups[i][j] = 2 * j3 * j3;
+                        else
+                            Ups[i][j] = 0;
+                        Ups[i][j] += q_v[i] * q_v[j] * (3 * j2 * j2 + 4 * j2 * j3 + 2 * j2 * j4 + 2 * j3 * j3 + 4 * j3 * j4 + j4 * j4);
+                        Ups[i][j] *= 2;
+                    }
+                }
+                // bs2
+                s = 0;
+                for (i = 0; i < 3; i++) {
+                    for (j = 0; j < 3; j++)
+                        s += Ups[i][j] * G[i][j];
+                }
+                for (i = 0; i < 3; i++)
+                    s += 2 * g[i] * V10[i];
+                F_b[6] -= s;
+
+                // bs2^2
+                F_b[7] += iZeta(q_n);
+
+                // b1 bs2
+                s = 0;
+                for (i = 0; i < 3; i++)
+                    s += 2 * g[i] * V12[i];
+                F_b[8] -= s;
+
+                // b2 bs2
+                F_b[9] += iChi_12(q_n);
+
+                // alpha_xi
+                F_b[10] -= 0.5 * trG;
+
+                // bn2
+                F_b[11] += 2 * iB_1(q_n);
+
+                // b1 bn2
+                s = 0;
+                for (i = 0; i < 3; i++)
+                    s += 2 * g[i] * B2[i];
+                F_b[12] += s;
+            }
         }
-        for (l = 0; l < 3; l++)
-            s += 2 * g[l] * V10[l];
-        F_b[6] -= s;
-
-        // bs2^2
-        F_b[7] += iZeta(q_n);
-
-        // b1 bs2
+        // 	gaussian factor of j
         s = 0;
-        for (l = 0; l < 3; l++)
-            s += 2 * g[l] * V12[l];
-        F_b[8] -= s;
-
-        // b2 bs2
-        F_b[9] += iChi_12(q_n);
-
-        // alpha_xi
-        F_b[10] -= 0.5 * trG;
-
-        // bn2
-        F_b[11] += 2 * iB_1(q_n);
-
-        // b1 bn2
-        s = 0;
-        for (l = 0; l < 3; l++)
-            s += 2 * g[l] * B2[l];
-        F_b[12] += s;
-
-        // 	gaussian factor of M
-        s = 0;
-        for (l = 0; l < 3; l++)
-            s += g[l] * y_t[l];
+        for (i = 0; i < 3; i++)
+            s += g[i] * y_t[i];
         fac = exp(-0.5 * s) / (sqrt(2. * M_PI) * 2. * M_PI * sqrt(det_A));
-
+        // printf("%.13lf %.13lf %.13lf %.13lf  # q, Xi(q), fac, det_A\n", q_n, Xi, fac, det_A);
         //	Sum over all component
-        for (l = 0; l < 13; l++)
-            M0_tab[l] += F_b[l] * fac;
+        for (i = 0; i < n_ingredients; i++)
+            M0_tab[i] += F_b[i] * fac;
 
         gsl_permutation_free(p);
         gsl_matrix_free(A);
         gsl_matrix_free(A_inv);
     }
     s = y * y * dmu;
-    for (l = 0; l < 13; l++)
-        M0_fin[l] = M0_tab[l] * s * 2. * M_PI;
+    for (i = 0; i < 13; i++)
+        M0_fin[i] = M0_tab[i] * s * 2. * M_PI;
 
     return;
 }
@@ -1708,15 +1749,18 @@ void M_0(double y, double R, double M0_fin[]) {
 
 void M_1(double y, double R, double M1_fin[]) {
     const double rn[3] = {0, 0, 1}; // unit vector to project over the LOS
-    int l, m, o;
-    double mu, q_n, det_A, y_t[3], q[3], U_dot[3], U1[3], G[3][3], U11_dot[3], U20_dot[3], g[3], B2[3], W[3][3][3], W_dot[3][3][3], A_lin[3][3], A_dot[3][3], A10_dot[3][3], Ups[3][3], Xi, s, fac, F_b[10], M1_tab[10];
-    double dmu = dmu_M1;
+    unsigned int i, j, k;
+    const unsigned int n_ingredients = 10;
+    double mu, q_n, det_A, y_t[3], q[3], U[3], U_dot[3], U1[3], G[3][3], U11_dot[3], U20_dot[3], g[3], B2[3], W[3][3][3], W_dot[3][3][3], A_lin[3][3], A_dot[3][3], A10_dot[3][3], Ups[3][3], Xi, s, fac, F_b[n_ingredients], M1_tab[n_ingredients];
+    const double dmu = 2. / nbins_M1;
     int signum = 0; // Use for matrix inversion
+    const double mumin = -1 + 0.5 * dmu;
 
-    for (l = 0; l < 10; l++)
-        M1_tab[l] = 0; // Initialize at each step
+    for (i = 0; i < n_ingredients; i++)
+        M1_tab[i] = 0; // Initialize at each step
 
-    for (mu = -1; mu <= 1; mu += dmu) { // Decomp integrale dtheta en somme de riemann int=somme f(x_i)*delta_x
+    for (unsigned int ibin = 0; ibin < nbins_M1; ibin++) { // Compute Riemann integral as int=Sum f(x_i)*delta_x
+        mu = mumin + ibin * dmu;
         gsl_matrix *A = gsl_matrix_calloc(3, 3);
         gsl_matrix *A_inv = gsl_matrix_calloc(3, 3); // Declaration of matrix A (3x3)
 
@@ -1732,8 +1776,8 @@ void M_1(double y, double R, double M1_fin[]) {
         q_n = sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2]); // norm of q
 
         // Unit vector
-        for (l = 0; l < 3; l++)
-            q_v[l] = q[l] / q_n;
+        for (i = 0; i < 3; i++)
+            q_v[i] = q[i] / q_n;
 
         /********Compute function ****************************************/
 
@@ -1741,16 +1785,17 @@ void M_1(double y, double R, double M1_fin[]) {
         Xi = iXi_L(q_n);
 
         //  	U functions
-        for (l = 0; l < 3; l++) {
-            U_dot[l] = fU_dot(q_n) * q_v[l];
-            U1[l] = iU_1(q_n) * q_v[l];
-            U11_dot[l] = 2. * iU_11(q_n) * q_v[l];
-            U20_dot[l] = 2. * iU_20(q_n) * q_v[l];
-        }
-
-        // B functions
-        for (l = 0; l < 3; l++) {
-            B2[l] = iB_2(q_n) * q_v[l];
+        const double U_tmp = get_U(q_n);
+        const double U_dot_tmp = fU_dot(q_n);
+        const double U_1_tmp = iU_1(q_n);
+        const double U_11_tmp = iU_11(q_n);
+        const double U_20_tmp = iU_20(q_n);
+        for (i = 0; i < 3; i++) {
+            U[i] = U_tmp * q_v[i];
+            U_dot[i] = U_dot_tmp * q_v[i];
+            U1[i] = U_1_tmp * q_v[i];
+            U11_dot[i] = 2. * U_11_tmp * q_v[i];
+            U20_dot[i] = 2. * U_20_tmp * q_v[i];
         }
 
         // 	Matix A
@@ -1761,169 +1806,191 @@ void M_1(double y, double R, double M1_fin[]) {
         gsl_linalg_LU_invert(A, p, A_inv);    // Inverse of matrix A
 
         // 	g_i components
-        for (l = 0; l < 3; l++) {
-            g[l] = 0;
-            for (m = 0; m < 3; m++)
-                g[l] += g_i(l, m, A_inv, y_t);
+        for (i = 0; i < 3; i++) {
+            g[i] = 0;
+            for (j = 0; j < 3; j++)
+                g[i] += g_i(i, j, A_inv, y_t);
         }
 
         // G_ij components
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                G[l][m] = G_ij(l, m, A_inv, g);
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++)
+                G[i][j] = G_ij(i, j, A_inv, g);
         }
 
         // Alin
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                A_lin[l][m] = Aij_11(l, m, q_n);
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++)
+                A_lin[i][j] = Aij_11(i, j, q_n);
         }
 
         // Adot_in
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                A_dot[l][m] = fA_dot(l, m, q_n);
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++)
+                A_dot[i][j] = fA_dot(i, j, q_n);
         }
 
         // Adot^10_in
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                A10_dot[l][m] = fA10_dot(l, m, q_n);
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++)
+                A10_dot[i][j] = fA10_dot(i, j, q_n);
         }
 
         // W_ijn
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                for (o = 0; o < 3; o++)
-                    W[l][m][o] = W_112(l, m, o, q_n);
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                for (k = 0; k < 3; k++)
+                    W[i][j][k] = W_112(i, j, k, q_n);
             }
         }
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                for (o = 0; o < 3; o++)
-                    W_dot[l][m][o] = 2. * W[l][m][o] + W[o][l][m] + W[m][o][l];
-            }
-        }
-
-        // 	Ups_ij
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                double j2 = iJ_2(q_n);
-                double j3 = iJ_3(q_n);
-                double j4 = iJ_4(q_n);
-                if (l == m)
-                    Ups[l][m] = 2 * j3 * j3;
-                else
-                    Ups[l][m] = 0;
-                Ups[l][m] += q_v[l] * q_v[m] * (3 * j2 * j2 + 4 * j2 * j3 + 2 * j2 * j4 + 2 * j3 * j3 + 4 * j3 * j4 + j4 * j4);
-                Ups[l][m] *= 2;
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                for (k = 0; k < 3; k++)
+                    W_dot[i][j][k] = 2. * W[i][j][k] + W[k][i][j] + W[j][k][i];
             }
         }
 
         // Sum over all the bias component
-        for (l = 0; l < 10; l++)
-            F_b[l] = 0;
+        for (i = 0; i < 10; i++)
+            F_b[i] = 0;
 
         // "1" term
         s = 0;
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                for (o = 0; o < 3; o++)
-                    s += G[l][m] * W_dot[l][m][o] * rn[o];
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                s += G[i][j] * W_dot[i][j][2] * rn[2];
             }
         }
         F_b[0] -= s / 2.;
         s = 0;
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                s += g[l] * A_dot[l][m] * rn[m];
+        for (i = 0; i < 3; i++) {
+            s += g[i] * A_dot[i][2] * rn[2];
         }
         F_b[0] -= s;
 
         // 	b1
         s = 0;
-        for (l = 0; l < 3; l++)
-            s += U_dot[l] * rn[l];
+        if (do_zeldovich)
+            s += U1[2] * rn[2];
+        else
+            s += U_dot[2] * rn[2];
+
         F_b[1] += 2. * s;
         s = 0;
-        for (l = 0; l < 3; l++) {
-            for (o = 0; o < 3; o++)
-                s += g[l] * A10_dot[l][o] * rn[o];
+        for (i = 0; i < 3; i++) {
+            s += g[i] * A10_dot[i][2] * rn[2];
         }
         F_b[1] -= 2. * s;
+
         s = 0;
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                for (o = 0; o < 3; o++)
-                    s += G[l][m] * U1[l] * A_lin[m][o] * rn[o];
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                if (do_CLPT)
+                    s += G[i][j] * U[i] * A_dot[j][2] * rn[2];
+                else
+                    s += G[i][j] * U1[i] * A_lin[j][2] * rn[2];
             }
         }
         F_b[1] -= 2. * s;
 
-        // b2
-        F_b[2] += U20_dot[2] * rn[2];
-        s = 0;
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                s += g[l] * U1[l] * U1[m] * rn[m];
-        }
-        F_b[2] -= 2. * s;
-
         // b1²
         F_b[3] += U11_dot[2] * rn[2];
+
         s = 0;
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                s += g[l] * U1[l] * U1[m] * rn[m];
+        for (i = 0; i < 3; i++) {
+            if (do_CLPT)
+                s += g[i] * U[i] * U_dot[2] * rn[2];
+            else
+                s += g[i] * U1[i] * U1[2] * rn[2];
         }
         F_b[3] -= 2. * s;
 
         s = 0;
-        for (l = 0; l < 3; l++)
-            s += g[l] * A_lin[l][2] * rn[2];
+        for (i = 0; i < 3; i++)
+            if (do_CLPT)
+                s += g[i] * A_dot[i][2] * rn[2];
+            else
+                s += g[i] * A_lin[i][2] * rn[2];
         F_b[3] -= Xi * s;
 
-        // b1.b2
+        if (!do_zeldovich) {
+            // b2
+            F_b[2] += U20_dot[2] * rn[2];
+
+            s = 0;
+            for (i = 0; i < 3; i++) {
+                if (do_CLPT)
+                    s += g[i] * U[i] * U_dot[2] * rn[2];
+                else
+                    s += g[i] * U1[i] * U1[2] * rn[2];
+            }
+            F_b[2] -= 2. * s;
+
+            // b1.b2
+            s = 0;
+            if (do_CLPT)
+                s += U_dot[2] * rn[2];
+            else
+                s += U1[2] * rn[2];
+
+            F_b[4] += 2. * Xi * s;
+
+            if (do_CLEFT) {
+                // B functions
+                const double B_2_tmp = iB_2(q_n);
+                for (i = 0; i < 3; i++) {
+                    B2[i] = B_2_tmp * q_v[i];
+                }
+                // 	Ups_ij
+                const double j2 = iJ_2(q_n);
+                const double j3 = iJ_3(q_n);
+                const double j4 = iJ_4(q_n);
+                for (i = 0; i < 3; i++) {
+                    for (j = 0; j < 3; j++) {
+                        if (i == j)
+                            Ups[i][j] = 2 * j3 * j3;
+                        else
+                            Ups[i][j] = 0;
+                        Ups[i][j] += q_v[i] * q_v[j] * (3 * j2 * j2 + 4 * j2 * j3 + 2 * j2 * j4 + 2 * j3 * j3 + 4 * j3 * j4 + j4 * j4);
+                        Ups[i][j] *= 2;
+                    }
+                }
+                // alpha_v
+                F_b[5] = -iB_2(q_n) * rn[2];
+
+                // alpha_vp
+                F_b[6] = -g[2] * rn[2];
+
+                // bn2
+                F_b[7] = -2 * B2[2] * rn[2];
+
+                // bs2
+                s = 2 * iV_10(q_n) * rn[2];
+                for (i = 0; i < 3; i++)
+                    s -= Ups[i][2] * g[i] * rn[2];
+                F_b[8] = 2 * s;
+
+                // b1 bs2
+                F_b[9] = 2 * iV_12(q_n) * rn[2];
+            }
+        }
+        // 	Gaussian factor of j
         s = 0;
-        for (l = 0; l < 3; l++)
-            s += U1[l] * rn[l];
-        F_b[4] += 2. * Xi * s;
-
-        // alpha_v
-        F_b[5] = -iB_2(q_n) * rn[2];
-
-        // alpha_vp
-        F_b[6] = -g[2] * rn[2];
-
-        // bn2
-        F_b[7] = -2 * B2[2] * rn[2];
-
-        // bs2
-        s = 2 * iV_10(q_n) * rn[2];
-        for (l = 0; l < 3; l++)
-            s -= Ups[l][2] * rn[2] * g[l];
-        F_b[8] = 2 * s;
-
-        // b1 bs2
-        F_b[9] = 2 * iV_12(q_n) * rn[2];
-
-        // 	Gaussian factor of M
-        s = 0;
-        for (l = 0; l < 3; l++)
-            s += g[l] * y_t[l];
+        for (i = 0; i < 3; i++)
+            s += g[i] * y_t[i];
         fac = exp(-0.5 * s) / (sqrt(2. * M_PI) * 2. * M_PI * sqrt(det_A));
 
         //	Sum over all component
-        for (l = 0; l < 10; l++)
-            M1_tab[l] += F_b[l] * fac;
+        for (i = 0; i < n_ingredients; i++)
+            M1_tab[i] += F_b[i] * fac;
 
         gsl_matrix_free(A);
         gsl_matrix_free(A_inv);
         gsl_permutation_free(p);
     }
     s = y * y * dmu;
-    for (l = 0; l < 10; l++)
-        M1_fin[l] = M1_tab[l] * s * 2. * M_PI;
+    for (i = 0; i < n_ingredients; i++)
+        M1_fin[i] = M1_tab[i] * s * 2. * M_PI;
 
     return;
 }
@@ -1933,17 +2000,20 @@ void M_1(double y, double R, double M1_fin[]) {
 // Calcul de M2
 
 void M_2(double y, double R, double M2_fin[]) {
-    const double rn[3] = {0, 0, 1}; // unit vector to project on n and m
-    int l, m, o, n;
-    double mu, q_n, det_A, y_t[3], q[3], U1[3], G[3][3], g[3], W[3][3][3], W_2dot[3][3][3], A_lin[3][3], A_2dot[3][3], A10_2dot[3][3], Ups[3][3], Xi, s[3][3], f, fac, M2_tab[14], t;
-    double F_par[7], F_per[7]; // Bias factor for sigma_parallel and sigma_perpendicular
-    double dmu = dmu_M2;
+    const double rn[3] = {0, 0, 1}; // unit vector to project on n and j
+    unsigned int i, j, k, n;
+    const unsigned int n_ingredients = 7;
+    double mu, q_n, det_A, y_t[3], q[3], U[3], U_dot[3], U1[3], G[3][3], g[3], W[3][3][3], W_2dot[3][3][3], A_lin[3][3], A_dot[3][3], A_2dot[3][3], A10_2dot[3][3], Ups[3][3], Xi, s[3][3], f, fac, M2_tab[2 * n_ingredients], t;
+    double F_par[n_ingredients], F_per[n_ingredients]; // Bias factor for sigma_parallel and sigma_perpendicular
+    const double dmu = 2. / nbins_M2;
     int signum = 0; // Use for matrix inversion
+    const double mumin = -1 + 0.5 * dmu;
 
-    for (l = 0; l < 14; l++)
-        M2_tab[l] = 0; // Initialize at each step
+    for (i = 0; i < 14; i++)
+        M2_tab[i] = 0; // Initialize at each step
 
-    for (mu = -1; mu <= 1; mu += dmu) { // Decomp integrale dtheta en somme de riemann int=somme f(x_i)*delta_x
+    for (unsigned int ibin = 0; ibin < nbins_M2; ibin++) { // Compute Riemann integral as int=Sum f(x_i)*delta_x
+        mu = mumin + ibin * dmu;
         gsl_matrix *A = gsl_matrix_calloc(3, 3);
         gsl_matrix *A_inv = gsl_matrix_calloc(3, 3); // Declaration of matrix A (3x3)
 
@@ -1959,16 +2029,21 @@ void M_2(double y, double R, double M2_fin[]) {
         q_n = sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2]); // norm of q
 
         // 	unit vector
-        for (l = 0; l < 3; l++)
-            q_v[l] = q[l] / q_n;
+        for (i = 0; i < 3; i++)
+            q_v[i] = q[i] / q_n;
 
         /********Compute function ****************************************/
         // Xi linear
         Xi = iXi_L(q_n);
 
         // 	U function
-        for (l = 0; l < 3; l++) {
-            U1[l] = iU_1(q_n) * q_v[l];
+        const double U_tmp = get_U(q_n);
+        const double U_dot_tmp = fU_dot(q_n);
+        const double U_1_tmp = iU_1(q_n);
+        for (i = 0; i < 3; i++) {
+            U[i] = U_tmp * q_v[i];
+            U1[i] = U_1_tmp * q_v[i];
+            U_dot[i] = U_dot_tmp * q_v[i];
         }
 
         // 	Matix A
@@ -1979,175 +2054,206 @@ void M_2(double y, double R, double M2_fin[]) {
         gsl_linalg_LU_invert(A, p, A_inv);    // Inverse of matrix A
 
         // 	g_i components
-        for (l = 0; l < 3; l++) {
-            g[l] = 0;
-            for (m = 0; m < 3; m++)
-                g[l] += g_i(l, m, A_inv, y_t);
+        for (i = 0; i < 3; i++) {
+            g[i] = 0;
+            for (j = 0; j < 3; j++)
+                g[i] += g_i(i, j, A_inv, y_t);
         }
 
         // 	G_ij components
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                G[l][m] = G_ij(l, m, A_inv, g);
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++)
+                G[i][j] = G_ij(i, j, A_inv, g);
         }
 
         // 	Alin_nm
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                A_lin[l][m] = Aij_11(l, m, q_n);
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++)
+                A_lin[i][j] = Aij_11(i, j, q_n);
+        }
+
+        // 	Adot_nm
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++)
+                A_dot[i][j] = fA_dot(i, j, q_n);
         }
 
         //	A2dot_nm
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                A_2dot[l][m] = fA_2dot(l, m, q_n);
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++)
+                A_2dot[i][j] = fA_2dot(i, j, q_n);
         }
 
         //	A2dot^10_nm
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                A10_2dot[l][m] = fA10_2dot(l, m, q_n);
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++)
+                A10_2dot[i][j] = fA10_2dot(i, j, q_n);
         }
 
         //  W_inm
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                for (o = 0; o < 3; o++)
-                    W[l][m][o] = W_112(l, m, o, q_n);
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                for (k = 0; k < 3; k++)
+                    W[i][j][k] = W_112(i, j, k, q_n);
             }
         }
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                for (o = 0; o < 3; o++)
-                    W_2dot[l][m][o] = 2. * W[l][m][o] + W[o][l][m] + 2. * W[m][o][l];
-            }
-        }
-
-        // Ups_ij
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                double j2 = iJ_2(q_n);
-                double j3 = iJ_3(q_n);
-                double j4 = iJ_4(q_n);
-                if (l == m)
-                    Ups[l][m] = 2 * j3 * j3;
-                else
-                    Ups[l][m] = 0;
-                Ups[l][m] += q_v[l] * q_v[m] * (3 * j2 * j2 + 4 * j2 * j3 + 2 * j2 * j4 + 2 * j3 * j3 + 4 * j3 * j4 + j4 * j4);
-                Ups[l][m] *= 2;
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                for (k = 0; k < 3; k++)
+                    W_2dot[i][j][k] = 2. * W[i][j][k] + W[k][i][j] + 2. * W[j][k][i];
             }
         }
 
         // Sum over all the bias component
-        for (l = 0; l < 7; l++)
-            F_par[l] = F_per[l] = 0;
+        for (i = 0; i < 7; i++)
+            F_par[i] = F_per[i] = 0;
 
         // "1" term
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                s[l][m] = A_2dot[l][m];
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++)
+                if (do_zeldovich)
+                    s[i][j] = A_lin[i][j];
+                else
+                    s[i][j] = A_2dot[i][j];
         }
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
+
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
                 for (n = 0; n < 3; n++) {
-                    for (o = 0; o < 3; o++)
-                        s[n][o] -= A_lin[l][n] * A_lin[m][o] * G[l][m];
+                    for (k = 0; k < 3; k++) {
+                        if (do_CLPT)
+                            s[n][k] -= A_dot[i][n] * A_dot[j][k] * G[i][j];
+                        else
+                            s[n][k] -= A_lin[i][n] * A_lin[j][k] * G[i][j];
+                    }
                 }
             }
         }
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                for (o = 0; o < 3; o++)
-                    s[m][o] -= W_2dot[l][m][o] * g[l];
+
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                for (k = 0; k < 3; k++)
+                    s[j][k] -= W_2dot[i][j][k] * g[i];
             }
         }
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                F_par[0] += s[l][m] * rn[l] * rn[m];
-                F_per[0] += s[l][m] * delta_K(l, m);
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                F_par[0] += s[i][j] * rn[i] * rn[j];
+                F_per[0] += s[i][j] * delta_K(i, j);
             }
         }
 
         // 	b1
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                s[l][m] = A10_2dot[l][m];
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++)
+                s[i][j] = A10_2dot[i][j];
         }
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                for (o = 0; o < 3; o++) {
-                    s[m][o] -= A_lin[l][m] * g[l] * U1[o] + A_lin[l][o] * g[l] * U1[m];
-                    s[m][o] -= U1[l] * g[l] * A_lin[m][o];
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                for (k = 0; k < 3; k++) {
+                    if (do_CLPT) {
+                        s[j][k] -= A_dot[i][j] * g[i] * U_dot[k] + A_dot[i][k] * g[i] * U_dot[j];
+                        s[j][k] -= U[i] * g[i] * A_2dot[j][k];
+                    } else {
+                        s[j][k] -= A_lin[i][j] * g[i] * U1[k] + A_lin[i][k] * g[i] * U1[j];
+                        s[j][k] -= U1[i] * g[i] * A_lin[j][k];
+                    }
                 }
             }
         }
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                F_par[1] += 2. * s[l][m] * rn[l] * rn[m];
-                F_per[1] += 2. * s[l][m] * delta_K(l, m);
-            }
-        }
-
-        // b2
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++)
-                s[l][m] = U1[l] * U1[m];
-        }
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                F_par[2] += 2. * s[l][m] * rn[l] * rn[m];
-                F_per[2] += 2. * s[l][m] * delta_K(l, m);
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                F_par[1] += 2. * s[i][j] * rn[i] * rn[j];
+                F_per[1] += 2. * s[i][j] * delta_K(i, j);
             }
         }
 
         // b1²
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                s[l][m] = Xi * A_lin[l][m] + 2. * U1[l] * U1[m];
-            }
-        }
-        for (l = 0; l < 3; l++) {
-            for (m = 0; m < 3; m++) {
-                F_par[3] += s[l][m] * rn[l] * rn[m];
-                F_per[3] += s[l][m] * delta_K(l, m);
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                if (do_CLPT)
+                    s[i][j] = Xi * A_2dot[i][j] + 2. * U_dot[i] * U_dot[j];
+                else
+                    s[i][j] = Xi * A_lin[i][j] + 2. * U1[i] * U1[j];
             }
         }
 
-        // bs2
-        F_par[4] = 2 * Ups[2][2];
-        t = 0;
-        for (l = 0; l < 3; l++)
-            t += Ups[l][l];
-        F_per[4] = 2 * t;
+        for (i = 0; i < 3; i++) {
+            for (j = 0; j < 3; j++) {
+                F_par[3] += s[i][j] * rn[i] * rn[j];
+                F_per[3] += s[i][j] * delta_K(i, j);
+            }
+        }
 
-        // alpha_s
-        F_par[5] = 1;
-        F_per[5] = 3;
+        if (!do_zeldovich) {
+            // b2
+            for (i = 0; i < 3; i++) {
+                for (j = 0; j < 3; j++)
+                    if (do_CLEFT)
+                        s[i][j] = U1[i] * U1[j];
+                    else
+                        s[i][j] = U_dot[i] * U_dot[j];
+            }
+            for (i = 0; i < 3; i++) {
+                for (j = 0; j < 3; j++) {
+                    F_par[2] += 2. * s[i][j] * rn[i] * rn[j];
+                    F_per[2] += 2. * s[i][j] * delta_K(i, j);
+                }
+            }
 
-        // beta_s
-        F_par[6] += Xi;
-        F_per[6] += 3 * Xi;
+            if (do_CLEFT) {
+                // Ups_ij
+                const double j2 = iJ_2(q_n);
+                const double j3 = iJ_3(q_n);
+                const double j4 = iJ_4(q_n);
+                for (i = 0; i < 3; i++) {
+                    for (j = 0; j < 3; j++) {
+                        if (i == j)
+                            Ups[i][j] = 2 * j3 * j3;
+                        else
+                            Ups[i][j] = 0;
+                        Ups[i][j] += q_v[i] * q_v[j] * (3 * j2 * j2 + 4 * j2 * j3 + 2 * j2 * j4 + 2 * j3 * j3 + 4 * j3 * j4 + j4 * j4);
+                        Ups[i][j] *= 2;
+                    }
+                }
 
-        // Gaussian factor of M
+                // bs2
+                F_par[4] = 2 * Ups[2][2];
+                t = 0;
+                for (i = 0; i < 3; i++)
+                    t += Ups[i][i];
+                F_per[4] = 2 * t;
+
+                // alpha_s
+                F_par[5] = 1;
+                F_per[5] = 3;
+
+                // beta_s
+                F_par[6] += Xi;
+                F_per[6] += 3 * Xi;
+            }
+        }
+        // Gaussian factor of j
         f = 0;
-        for (l = 0; l < 3; l++)
-            f += g[l] * y_t[l];
+        for (i = 0; i < 3; i++)
+            f += g[i] * y_t[i];
         fac = exp(-0.5 * f) / (sqrt(2. * M_PI) * 2. * M_PI * sqrt(fabs(det_A)));
 
         // Sum over all component
-        for (l = 0; l < 7; l++) {
-            M2_tab[l] += F_par[l] * fac;
-            M2_tab[l + 7] += F_per[l] * fac;
+        for (i = 0; i < n_ingredients; i++) {
+            M2_tab[i] += F_par[i] * fac;
+            M2_tab[i + 7] += F_per[i] * fac;
         }
+
         gsl_permutation_free(p);
         gsl_matrix_free(A);
         gsl_matrix_free(A_inv);
     }
 
     f = y * y * dmu;
-    for (l = 0; l < 7; l++) {
-        M2_fin[l] = M2_tab[l] * f * 2. * M_PI;
-        M2_fin[l + 7] = 0.5 * f * (M2_tab[l + 7] - M2_tab[l]) * 2. * M_PI;
+    for (i = 0; i < 7; i++) {
+        M2_fin[i] = M2_tab[i] * f * 2. * M_PI;
+        M2_fin[i + 7] = 0.5 * f * (M2_tab[i + 7] - M2_tab[i]) * 2. * M_PI;
     }
 
     return;
@@ -2157,14 +2263,23 @@ void M_2(double y, double R, double M2_fin[]) {
 /************************************************************************************************************************************************************************/
 /******** Write all terms up to second order *******************************************************************************************************************************/
 
-void write_cleft(char file[]) {
-    int i, n0 = 13, n1 = 10, n2 = 14;
+void write_ingredients(char file[]) {
+    unsigned int i, n0 = 13, n1 = 10, n2 = 14;
     double r;
     char filename[strlen(file) + 1 + 7];
     FILE *fi;
 
     strcpy(filename, file);
-    strcat(filename, ".cleft");
+    if (do_zeldovich)
+        strcat(filename, ".za");
+    else if (do_CLPT)
+        strcat(filename, ".clpt");
+    else if (do_CLEFT)
+        strcat(filename, ".cleft");
+    else {
+        printf("Code should not have arrived here\n");
+        exit(-1);
+    }
 
     printf("Calculating xi, v, sigma contributions...\n");
 
@@ -2197,7 +2312,7 @@ void write_cleft(char file[]) {
 }
 
 /************************************************************************************************************************************************************************/
-/************\\Count the number of ligne in a file\\********************************************************************************************************************/
+/************\\Count the number of lines in a file\\********************************************************************************************************************/
 
 void compte(FILE *fichier, int *fcounts) {
     int c;
@@ -2291,25 +2406,21 @@ void jfuncs(const double q, double sum[]) {
 }
 
 void compute_and_interpolate_jfuncs(void) {
-    int i;
-    double q, logq;
-    double qmin = 0.001;
-    double qmax = 2000; // Maximum q to compute the q functions, 2000 by default
-    int nq = 3000;      // nombre de pas
-    double log_qmin = log10(qmin);
-    double log_qmax = log10(qmax);
-    double dq = (log_qmax - log_qmin) / nq;
+    unsigned int i;
+    double q;
+    const double qmax = 2000;        // Maximum q to compute the q functions, 2000 by default
+    const unsigned int nbins = 3000; // Number of steps
+    const double log_qmax = log10(qmax);
+    const double dq = log_qmax / (nbins - 1);
 
     printf("getting jfunctions...\n");
-    const int val = 3002; // WARNING : number of lines in files (might change if we want to increase)
-    double q_array[val], B1[val], B2[val], J2[val], J3[val], J4[val], v12[val], chi12[val], zeta[val];
+    double q_array[nbins], B1[nbins], B2[nbins], J2[nbins], J3[nbins], J4[nbins], v12[nbins], chi12[nbins], zeta[nbins];
 
     q_array[0] = v12[0] = chi12[0] = zeta[0] = 0.;
 
     //  Reset the value of logq
-    logq = log_qmin;
-    for (i = 1; i < val; i++) {
-        q = pow(10, logq);
+    for (i = 1; i < nbins; i++) {
+        q = pow(10, i * dq);
         double funcs[9];
         jfuncs(q, funcs);
         q_array[i] = q;
@@ -2321,40 +2432,39 @@ void compute_and_interpolate_jfuncs(void) {
         v12[i] = funcs[6];
         chi12[i] = funcs[7];
         zeta[i] = funcs[8];
-        logq += dq;
     }
 
     acc[26] = gsl_interp_accel_alloc();
-    spline[26] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[26], q_array, B1, val);
+    spline[26] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[26], q_array, B1, nbins);
 
     acc[27] = gsl_interp_accel_alloc();
-    spline[27] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[27], q_array, B2, val);
+    spline[27] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[27], q_array, B2, nbins);
 
     acc[28] = gsl_interp_accel_alloc();
-    spline[28] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[28], q_array, J2, val);
+    spline[28] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[28], q_array, J2, nbins);
 
     acc[29] = gsl_interp_accel_alloc();
-    spline[29] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[29], q_array, J3, val);
+    spline[29] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[29], q_array, J3, nbins);
 
     acc[30] = gsl_interp_accel_alloc();
-    spline[30] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[30], q_array, J4, val);
+    spline[30] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[30], q_array, J4, nbins);
 
     acc[31] = gsl_interp_accel_alloc();
-    spline[31] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[31], q_array, v12, val);
+    spline[31] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[31], q_array, v12, nbins);
 
     acc[32] = gsl_interp_accel_alloc();
-    spline[32] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[32], q_array, chi12, val);
+    spline[32] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[32], q_array, chi12, nbins);
 
     acc[33] = gsl_interp_accel_alloc();
-    spline[33] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[33], q_array, zeta, val);
+    spline[33] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[33], q_array, zeta, nbins);
 
     return;
 }
@@ -2455,108 +2565,121 @@ void qfuncs(const double q, double sum[]) {
 }
 
 void compute_and_interpolate_qfuncs(int dofast) {
-    // FILE *f;
-    int i;
-    double q, logq;
-    double qmin = 0.001;
-    double qmax = 2000; // Maximum q to compute the q functions, 2000 by default
-    int nq = 3000;      // nombre de pas
-    double log_qmin = log10(qmin);
-    double log_qmax = log10(qmax);
-    double dq = (log_qmax - log_qmin) / nq;
+    unsigned int i;
+    double q;
+    const double qmax = 2000;        // Maximum q to compute the q functions, 2000 by default
+    const unsigned int nbins = 3000; // Number of steps
+    const double log_qmax = log10(qmax);
+    const double dq = log_qmax / (nbins - 1);
 
     printf("getting qfunctions...\n");
-    const int val = 3002; // WARNING : number of lines in files (might change if we want to increase
-    double q_array[val], xil[val], X_x11[val], X_x13[val], X_x22[val], X_x1012[val], Y_y11[val], Y_y13[val], Y_y22[val], Y_y1012[val],
-        U_u1[val], U_u3[val], U_u11[val], U_u20[val], W_v1[val], W_v3[val], W_t[val], W_v10[val];
+    double q_array[nbins], xil[nbins], X_x11[nbins], X_x13[nbins], X_x22[nbins], X_x1012[nbins], Y_y11[nbins], Y_y13[nbins], Y_y22[nbins], Y_y1012[nbins],
+        U_u1[nbins], U_u3[nbins], U_u11[nbins], U_u20[nbins], W_v1[nbins], W_v3[nbins], W_t[nbins], W_v10[nbins];
 
     q_array[0] = xil[0] = X_x11[0] = X_x13[0] = X_x22[0] = X_x1012[0] = Y_y11[0] = Y_y13[0] = Y_y22[0] = Y_y1012[0] = U_u1[0] = U_u3[0] = U_u11[0] = U_u20[0] = W_v1[0] = W_v3[0] = W_t[0] = W_v10[0] = 0.;
 
     // Reset logq in the beginning
-    logq = log_qmin;
-    for (i = 1; i < val; i++) {
-        q = pow(10, logq);
-        double funcs[16];
-        qfuncs(q, funcs);
+    for (i = 1; i < nbins; i++) {
+        q = pow(10, i * dq);
         q_array[i] = q;
         xil[i] = Xi_L(q);
-        X_x11[i] = funcs[0];
-        X_x22[i] = funcs[1];
-        X_x13[i] = funcs[2];
-        Y_y11[i] = funcs[3];
-        Y_y22[i] = funcs[4];
-        Y_y13[i] = funcs[5];
-        X_x1012[i] = funcs[6];
-        Y_y1012[i] = funcs[7];
-        W_v1[i] = funcs[8];
-        W_v3[i] = funcs[9];
-        W_t[i] = funcs[10];
-        U_u1[i] = funcs[11];
-        U_u3[i] = funcs[12];
-        U_u20[i] = funcs[13];
-        U_u11[i] = funcs[14];
-        W_v10[i] = funcs[15];
-
-        logq += dq;
+        if (dofast) {
+            double funcs[16];
+            qfuncs(q, funcs);
+            X_x11[i] = funcs[0];
+            X_x22[i] = funcs[1];
+            X_x13[i] = funcs[2];
+            Y_y11[i] = funcs[3];
+            Y_y22[i] = funcs[4];
+            Y_y13[i] = funcs[5];
+            X_x1012[i] = funcs[6];
+            Y_y1012[i] = funcs[7];
+            W_v1[i] = funcs[8];
+            W_v3[i] = funcs[9];
+            W_t[i] = funcs[10];
+            U_u1[i] = funcs[11];
+            U_u3[i] = funcs[12];
+            U_u20[i] = funcs[13];
+            U_u11[i] = funcs[14];
+            W_v10[i] = funcs[15];
+        } else {
+            X_x11[i] = X_11(q);
+            X_x22[i] = X_22(q);
+            X_x13[i] = X_13(q);
+            Y_y11[i] = Y_11(q);
+            Y_y22[i] = Y_22(q);
+            Y_y13[i] = Y_13(q);
+            X_x1012[i] = X_10_12(q);
+            Y_y1012[i] = Y_10_12(q);
+            W_v1[i] = V1_112(q);
+            W_v3[i] = V3_112(q);
+            W_t[i] = T_112(q);
+            U_u1[i] = U_1(q);
+            U_u3[i] = U_3(q);
+            U_u20[i] = U_20(q);
+            U_u11[i] = U_11(q);
+            W_v10[i] = V_10(q);
+        }
+        // printf("i=%.13d q=%.13lf # check\n", i, q);
     }
 
     acc[8] = gsl_interp_accel_alloc();
-    spline[8] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[8], q_array, xil, val);
+    spline[8] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[8], q_array, xil, nbins);
     acc[9] = gsl_interp_accel_alloc();
-    spline[9] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[9], q_array, U_u1, val);
+    spline[9] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[9], q_array, U_u1, nbins);
     acc[10] = gsl_interp_accel_alloc();
-    spline[10] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[10], q_array, U_u3, val);
+    spline[10] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[10], q_array, U_u3, nbins);
     acc[11] = gsl_interp_accel_alloc();
-    spline[11] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[11], q_array, U_u11, val);
+    spline[11] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[11], q_array, U_u11, nbins);
     acc[12] = gsl_interp_accel_alloc();
-    spline[12] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[12], q_array, U_u20, val);
+    spline[12] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[12], q_array, U_u20, nbins);
     acc[13] = gsl_interp_accel_alloc();
-    spline[13] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[13], q_array, X_x11, val);
+    spline[13] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[13], q_array, X_x11, nbins);
     acc[14] = gsl_interp_accel_alloc();
-    spline[14] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[14], q_array, X_x13, val);
+    spline[14] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[14], q_array, X_x13, nbins);
     acc[15] = gsl_interp_accel_alloc();
-    spline[15] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[15], q_array, X_x22, val);
+    spline[15] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[15], q_array, X_x22, nbins);
     acc[16] = gsl_interp_accel_alloc();
-    spline[16] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[16], q_array, X_x1012, val);
+    spline[16] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[16], q_array, X_x1012, nbins);
     acc[17] = gsl_interp_accel_alloc();
-    spline[17] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[17], q_array, Y_y11, val);
+    spline[17] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[17], q_array, Y_y11, nbins);
     acc[18] = gsl_interp_accel_alloc();
-    spline[18] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[18], q_array, Y_y13, val);
+    spline[18] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[18], q_array, Y_y13, nbins);
     acc[19] = gsl_interp_accel_alloc();
-    spline[19] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[19], q_array, Y_y22, val);
+    spline[19] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[19], q_array, Y_y22, nbins);
     acc[20] = gsl_interp_accel_alloc();
-    spline[20] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[20], q_array, Y_y1012, val);
+    spline[20] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[20], q_array, Y_y1012, nbins);
     acc[21] = gsl_interp_accel_alloc();
-    spline[21] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[21], q_array, W_v1, val);
+    spline[21] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[21], q_array, W_v1, nbins);
     acc[22] = gsl_interp_accel_alloc();
-    spline[22] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[22], q_array, W_v3, val);
+    spline[22] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[22], q_array, W_v3, nbins);
     acc[23] = gsl_interp_accel_alloc();
-    spline[23] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[23], q_array, W_t, val);
+    spline[23] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[23], q_array, W_t, nbins);
     acc[25] = gsl_interp_accel_alloc();
-    spline[25] = gsl_spline_alloc(gsl_interp_cspline, val);
-    gsl_spline_init(spline[25], q_array, W_v10, val);
+    spline[25] = gsl_spline_alloc(gsl_interp_cspline, nbins);
+    gsl_spline_init(spline[25], q_array, W_v10, nbins);
 
     return;
 }
 
 /************************************************************************************************************************************************************************/
-/********Write all CLT components ******************************************************************************************************************************/
+/********Write all components ******************************************************************************************************************************/
 
 void initialize_CLEFT(char pk_filename[]) {
     // Get power spectrum
@@ -2595,13 +2718,13 @@ void initialize_CLEFT(char pk_filename[]) {
 
     interpole(1, pk_filename, nLines, nHeader);
 
-    // Compute CLEFT components
+    // Compute components
     compute_and_interpolate_R1();
     compute_and_interpolate_R2();
     compute_and_interpolate_Qn();
-    compute_and_interpolate_qfuncs(1);
+    compute_and_interpolate_qfuncs(0);
     compute_and_interpolate_jfuncs();
-    write_cleft(pk_filename);
+    write_ingredients(pk_filename);
 
     // Finalize
 
@@ -2618,6 +2741,24 @@ int main(int argc, char *argv[]) {
     double start_time, end_time;
     start_time = omp_get_wtime();
 
+    if (argv[2] == NULL) {
+        do_CLEFT = true; // By default, compute CLEFT ingredients
+    } else {
+        int mode = strtol(argv[2], NULL, 10);
+        if (mode == 0) {
+            do_zeldovich = true;
+            printf("Computes the Zel'dovich approximation\n");
+        } else if (mode == 1) {
+            do_CLPT = true;
+            printf("Computes the CLPT model\n");
+        } else if (mode == 2) {
+            do_CLEFT = true;
+            printf("Computes the CLEFT model\n");
+        } else {
+            printf("Error, mode argument should be '0', '1' or '2', currently: %s as integer %d\n", argv[2], mode);
+            exit(-1);
+        }
+    }
     initialize_CLEFT(argv[1]);
 
     end_time = omp_get_wtime();
