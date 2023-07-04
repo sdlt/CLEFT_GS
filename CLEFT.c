@@ -1393,11 +1393,10 @@ void get_M(double q, gsl_matrix **A) {
     unsigned int i, j;
     for (i = 0; i < 3; i++) {
         for (j = 0; j < 3; j++) {
-            if (do_CLPT) {
+            if (do_CLPT)
                 gsl_matrix_set(*A, i, j, Aij(i, j, q));
-            } else { // Only keep Zel'dovich solution (+ 1-loop correction expanded for CLEFT)
+            else
                 gsl_matrix_set(*A, i, j, Aij_11(i, j, q));
-            }
         }
     }
 }
@@ -1621,10 +1620,7 @@ void M_0(double y, double R, double M0_fin[]) {
             s = 0;
             for (i = 0; i < 3; i++) {
                 for (j = 0; j < 3; j++)
-                    if (do_CLPT)
-                        s += U[i] * U[j] * G[i][j];
-                    else
-                        s += U1[i] * U1[j] * G[i][j];
+                    s += U1[i] * U1[j] * G[i][j];
             }
             F_b[3] -= s;
             // b2
@@ -1636,20 +1632,14 @@ void M_0(double y, double R, double M0_fin[]) {
             s = 0;
             for (i = 0; i < 3; i++) {
                 for (j = 0; j < 3; j++)
-                    if (do_CLEFT)
-                        s += U1[i] * U1[j] * G[i][j];
-                    else
-                        s += U[i] * U[j] * G[i][j];
+                    s += U1[i] * U1[j] * G[i][j];
             }
             F_b[2] -= s;
 
             // b1.b2
             s = 0;
             for (i = 0; i < 3; i++)
-                if (do_CLEFT)
-                    s += U1[i] * g[i];
-                else
-                    s += U[i] * g[i];
+                s += U1[i] * g[i];
             F_b[4] -= 2. * Xi * s;
 
             // b2²
@@ -1732,7 +1722,6 @@ void M_0(double y, double R, double M0_fin[]) {
         for (i = 0; i < 3; i++)
             s += g[i] * y_t[i];
         fac = exp(-0.5 * s) / (sqrt(2. * M_PI) * 2. * M_PI * sqrt(det_A));
-        // printf("%.13lf %.13lf %.13lf %.13lf  # q, Xi(q), fac, det_A\n", q_n, Xi, fac, det_A);
         //	Sum over all component
         for (i = 0; i < n_ingredients; i++)
             M0_tab[i] += F_b[i] * fac;
@@ -1755,7 +1744,7 @@ void M_1(double y, double R, double M1_fin[]) {
     const double rn[3] = {0, 0, 1}; // unit vector to project over the LOS
     unsigned int i, j, k;
     const unsigned int n_ingredients = 10;
-    double mu, q_n, det_A, y_t[3], q[3], U[3], U_dot[3], U1[3], G[3][3], U11_dot[3], U20_dot[3], g[3], B2[3], W[3][3][3], W_dot[3][3][3], A_lin[3][3], A_dot[3][3], A10_dot[3][3], Ups[3][3], Xi, s, fac, F_b[n_ingredients], M1_tab[n_ingredients];
+    double mu, q_n, det_A, y_t[3], q[3], U_dot[3], U1[3], G[3][3], U11_dot[3], U20_dot[3], g[3], B2[3], W[3][3][3], W_dot[3][3][3], A_lin[3][3], A_dot[3][3], A10_dot[3][3], Ups[3][3], Xi, s, fac, F_b[n_ingredients], M1_tab[n_ingredients];
     const double dmu = 2. / nbins_M1;
     int signum = 0; // Use for matrix inversion
     const double mumin = -1 + 0.5 * dmu;
@@ -1789,13 +1778,11 @@ void M_1(double y, double R, double M1_fin[]) {
         Xi = iXi_L(q_n);
 
         //  	U functions
-        const double U_tmp = get_U(q_n);
         const double U_dot_tmp = fU_dot(q_n);
         const double U_1_tmp = iU_1(q_n);
         const double U_11_tmp = iU_11(q_n);
         const double U_20_tmp = iU_20(q_n);
         for (i = 0; i < 3; i++) {
-            U[i] = U_tmp * q_v[i];
             U_dot[i] = U_dot_tmp * q_v[i];
             U1[i] = U_1_tmp * q_v[i];
             U11_dot[i] = 2. * U_11_tmp * q_v[i];
@@ -1897,10 +1884,7 @@ void M_1(double y, double R, double M1_fin[]) {
             s = 0;
             for (i = 0; i < 3; i++) {
                 for (j = 0; j < 3; j++) {
-                    if (do_CLPT)
-                        s += G[i][j] * U[i] * A_dot[j][2] * rn[2];
-                    else
-                        s += G[i][j] * U1[i] * A_lin[j][2] * rn[2];
+                    s += G[i][j] * U1[i] * A_lin[j][2] * rn[2];
                 }
             }
             F_b[1] -= 2. * s;
@@ -1910,19 +1894,13 @@ void M_1(double y, double R, double M1_fin[]) {
 
             s = 0;
             for (i = 0; i < 3; i++) {
-                if (do_CLPT)
-                    s += g[i] * U[i] * U_dot[2] * rn[2];
-                else
-                    s += g[i] * U1[i] * U1[2] * rn[2];
+                s += g[i] * U1[i] * U1[2] * rn[2];
             }
             F_b[3] -= 2. * s;
 
             s = 0;
             for (i = 0; i < 3; i++)
-                if (do_CLPT)
-                    s += g[i] * A_dot[i][2] * rn[2];
-                else
-                    s += g[i] * A_lin[i][2] * rn[2];
+                s += g[i] * A_lin[i][2] * rn[2];
             F_b[3] -= Xi * s;
 
             // b2
@@ -1930,19 +1908,13 @@ void M_1(double y, double R, double M1_fin[]) {
 
             s = 0;
             for (i = 0; i < 3; i++) {
-                if (do_CLPT)
-                    s += g[i] * U[i] * U_dot[2] * rn[2];
-                else
-                    s += g[i] * U1[i] * U1[2] * rn[2];
+                s += g[i] * U1[i] * U1[2] * rn[2];
             }
             F_b[2] -= 2. * s;
 
             // b1.b2
             s = 0;
-            if (do_CLPT)
-                s += U_dot[2] * rn[2];
-            else
-                s += U1[2] * rn[2];
+            s += U1[2] * rn[2];
 
             F_b[4] += 2. * Xi * s;
 
@@ -1990,7 +1962,6 @@ void M_1(double y, double R, double M1_fin[]) {
         for (i = 0; i < 3; i++)
             s += g[i] * y_t[i];
         fac = exp(-0.5 * s) / (sqrt(2. * M_PI) * 2. * M_PI * sqrt(det_A));
-
         //	Sum over all component
         for (i = 0; i < n_ingredients; i++)
             M1_tab[i] += F_b[i] * fac;
@@ -2014,13 +1985,13 @@ void M_2(double y, double R, double M2_fin[]) {
     const double rn[3] = {0, 0, 1}; // unit vector to project on n and j
     unsigned int i, j, k, n;
     const unsigned int n_ingredients = 7;
-    double mu, q_n, det_A, y_t[3], q[3], U[3], U_dot[3], U1[3], G[3][3], g[3], W[3][3][3], W_2dot[3][3][3], A_lin[3][3], A_dot[3][3], A_2dot[3][3], A10_2dot[3][3], Ups[3][3], Xi, s[3][3], f, fac, M2_tab[2 * n_ingredients], t;
+    double mu, q_n, det_A, y_t[3], q[3], U1[3], G[3][3], g[3], W[3][3][3], W_2dot[3][3][3], A_lin[3][3], A_2dot[3][3], A10_2dot[3][3], Ups[3][3], Xi, s[3][3], f, fac, M2_tab[2 * n_ingredients], t;
     double F_par[n_ingredients], F_per[n_ingredients]; // Bias factor for sigma_parallel and sigma_perpendicular
     const double dmu = 2. / nbins_M2;
     int signum = 0; // Use for matrix inversion
     const double mumin = -1 + 0.5 * dmu;
 
-    for (i = 0; i < 14; i++)
+    for (i = 0; i < 2 * n_ingredients; i++)
         M2_tab[i] = 0; // Initialize at each step
 
     for (unsigned int ibin = 0; ibin < nbins_M2; ibin++) { // Compute Riemann integral as int=Sum f(x_i)*delta_x
@@ -2048,13 +2019,9 @@ void M_2(double y, double R, double M2_fin[]) {
         Xi = iXi_L(q_n);
 
         // 	U function
-        const double U_tmp = get_U(q_n);
-        const double U_dot_tmp = fU_dot(q_n);
         const double U_1_tmp = iU_1(q_n);
         for (i = 0; i < 3; i++) {
-            U[i] = U_tmp * q_v[i];
             U1[i] = U_1_tmp * q_v[i];
-            U_dot[i] = U_dot_tmp * q_v[i];
         }
 
         // 	Matix A
@@ -2081,12 +2048,6 @@ void M_2(double y, double R, double M2_fin[]) {
         for (i = 0; i < 3; i++) {
             for (j = 0; j < 3; j++)
                 A_lin[i][j] = Aij_11(i, j, q_n);
-        }
-
-        // 	Adot_nm
-        for (i = 0; i < 3; i++) {
-            for (j = 0; j < 3; j++)
-                A_dot[i][j] = fA_dot(i, j, q_n);
         }
 
         //	A2dot_nm
@@ -2134,10 +2095,7 @@ void M_2(double y, double R, double M2_fin[]) {
                 for (j = 0; j < 3; j++) {
                     for (n = 0; n < 3; n++) {
                         for (k = 0; k < 3; k++) {
-                            if (do_CLPT)
-                                s[n][k] -= A_dot[i][n] * A_dot[j][k] * G[i][j];
-                            else
-                                s[n][k] -= A_lin[i][n] * A_lin[j][k] * G[i][j];
+                            s[n][k] -= A_lin[i][n] * A_lin[j][k] * G[i][j];
                         }
                     }
                 }
@@ -2164,13 +2122,8 @@ void M_2(double y, double R, double M2_fin[]) {
             for (i = 0; i < 3; i++) {
                 for (j = 0; j < 3; j++) {
                     for (k = 0; k < 3; k++) {
-                        if (do_CLPT) {
-                            s[j][k] -= A_dot[i][j] * g[i] * U_dot[k] + A_dot[i][k] * g[i] * U_dot[j];
-                            s[j][k] -= U[i] * g[i] * A_2dot[j][k];
-                        } else {
-                            s[j][k] -= A_lin[i][j] * g[i] * U1[k] + A_lin[i][k] * g[i] * U1[j];
-                            s[j][k] -= U1[i] * g[i] * A_lin[j][k];
-                        }
+                        s[j][k] -= A_lin[i][j] * g[i] * U1[k] + A_lin[i][k] * g[i] * U1[j];
+                        s[j][k] -= U1[i] * g[i] * A_lin[j][k];
                     }
                 }
             }
@@ -2184,10 +2137,7 @@ void M_2(double y, double R, double M2_fin[]) {
             // b1²
             for (i = 0; i < 3; i++) {
                 for (j = 0; j < 3; j++) {
-                    if (do_CLPT)
-                        s[i][j] = Xi * A_2dot[i][j] + 2. * U_dot[i] * U_dot[j];
-                    else
-                        s[i][j] = Xi * A_lin[i][j] + 2. * U1[i] * U1[j];
+                    s[i][j] = Xi * A_lin[i][j] + 2. * U1[i] * U1[j];
                 }
             }
 
@@ -2200,10 +2150,7 @@ void M_2(double y, double R, double M2_fin[]) {
             // b2
             for (i = 0; i < 3; i++) {
                 for (j = 0; j < 3; j++)
-                    if (do_CLEFT)
-                        s[i][j] = U1[i] * U1[j];
-                    else
-                        s[i][j] = U_dot[i] * U_dot[j];
+                    s[i][j] = U1[i] * U1[j];
             }
             for (i = 0; i < 3; i++) {
                 for (j = 0; j < 3; j++) {
@@ -2249,7 +2196,6 @@ void M_2(double y, double R, double M2_fin[]) {
         for (i = 0; i < 3; i++)
             f += g[i] * y_t[i];
         fac = exp(-0.5 * f) / (sqrt(2. * M_PI) * 2. * M_PI * sqrt(fabs(det_A)));
-
         // Sum over all component
         for (i = 0; i < n_ingredients; i++) {
             M2_tab[i] += F_par[i] * fac;
