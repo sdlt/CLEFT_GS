@@ -35,10 +35,10 @@ const double xpivot_TV = 600;       // argument in Bessel function where we star
 const unsigned int nbins_M0 = 2000; // Integration step for M0 function
 const unsigned int nbins_M1 = 3200; // Integration step for M1 function
 const unsigned int nbins_M2 = 2000; // Integration step for M2 function
-double kmin;                        // minimum k in the power spectrum file (defined in main function)
-double kmax;                        // minimum k in the power spectrum file (defined in main function)
+double kmin, kmax;                  // min/max k in the power spectrum file used for interpolations
+double kmin_integ, kmax_integ;      // min/max k in the power spectrum used for integrations
 double q_v[3];                      // unit vector q_i, q_j, q_k
-double EPS = 5e-8;                  // Precision buffer to avoid numerical aterfacts
+double EPS = 1e-8;                  // Precision buffer to avoid numerical aterfacts
 
 struct my_f_params2 {
     double a;
@@ -167,7 +167,7 @@ double int_cquad(double func(double, void *), double alpha) {
     F.params = &alpha;
 
     gsl_integration_cquad_workspace *w = gsl_integration_cquad_workspace_alloc(size);
-    gsl_integration_cquad(&F, kmin, kmax, 0, 1e-9, w, &result, &error, NULL);
+    gsl_integration_cquad(&F, kmin_integ, kmax_integ, 0, 1e-9, w, &result, &error, NULL);
     gsl_integration_cquad_workspace_free(w);
     return result;
 }
@@ -180,7 +180,7 @@ double int_cquad_pivot_UYXi(double func(double, void *), double alpha) {
     F.params = &alpha;
 
     gsl_integration_cquad_workspace *w = gsl_integration_cquad_workspace_alloc(size);
-    gsl_integration_cquad(&F, kmin, xpivot_UYXi / q, 0, 1e-9, w, &result, &error, NULL);
+    gsl_integration_cquad(&F, kmin_integ, xpivot_UYXi / q, 0, 1e-9, w, &result, &error, NULL);
     gsl_integration_cquad_workspace_free(w);
     return result;
 }
@@ -193,7 +193,7 @@ double int_cquad_pivot_TV(double func(double, void *), double alpha) {
     F.params = &alpha;
 
     gsl_integration_cquad_workspace *w = gsl_integration_cquad_workspace_alloc(size);
-    gsl_integration_cquad(&F, kmin, xpivot_TV / q, 0, 1e-9, w, &result, &error, NULL);
+    gsl_integration_cquad(&F, kmin_integ, xpivot_TV / q, 0, 1e-9, w, &result, &error, NULL);
     gsl_integration_cquad_workspace_free(w);
     return result;
 }
@@ -490,8 +490,8 @@ double R1(double k) {
     F.params = &k;
 
     gsl_integration_qag(&F, 0, 1., 0, 1e-3, 200, 6, w, &result1, &error);
-    if (kmax / k > 1)
-        gsl_integration_qag(&F, 1., kmax / k, 0, 1e-3, 200, 6, w, &result2, &error);
+    if (kmax_integ / k > 1)
+        gsl_integration_qag(&F, 1., kmax_integ / k, 0, 1e-3, 200, 6, w, &result2, &error);
     gsl_integration_workspace_free(w);
 
     return (k * k * k) / (4. * M_PI * M_PI) * P_L(k) * (result1 + result2);
@@ -513,8 +513,8 @@ double R2(double k) {
 
     gsl_integration_workspace *w = gsl_integration_workspace_alloc(200);
     gsl_integration_qag(&F, 0, 1, 0, 1e-3, 200, 6, w, &result1, &error);
-    if (kmax / k > 1)
-        gsl_integration_qag(&F, 1, kmax / k, 0, 1e-3, 200, 6, w, &result2, &error);
+    if (kmax_integ / k > 1)
+        gsl_integration_qag(&F, 1, kmax_integ / k, 0, 1e-3, 200, 6, w, &result2, &error);
     gsl_integration_workspace_free(w);
     return (k * k * k) / (4. * M_PI * M_PI) * P_L(k) * (result1 + result2);
 }
@@ -632,8 +632,8 @@ double Q_n(int n, double k) {
     else
         gsl_integration_qag(&F, 0., 1., 0, 1e-3, 200, 6, w, &result1, &error);
 
-    if (kmax / k > 1)
-        gsl_integration_qag(&F, 1., kmax / k, 0, 5e-2, 200, 6, w, &result2, &error);
+    if (kmax_integ / k > 1)
+        gsl_integration_qag(&F, 1., kmax_integ / k, 0, 5e-2, 200, 6, w, &result2, &error);
 
     gsl_integration_workspace_free(w);
 
@@ -641,7 +641,6 @@ double Q_n(int n, double k) {
 }
 
 void compute_and_interpolate_Qn(void) {
-    // FILE* f;
     unsigned int n;
     const unsigned int nk = 3000; // Number of points
     const double log_kmin = log10(kmin);
@@ -722,7 +721,7 @@ double fXi_L_qawo(double k, void *p) {
 }
 
 double Xi_L(double q) {
-    if (kmax < xpivot_UYXi / q)
+    if (kmax_integ * q < xpivot_UYXi)
         return 1. / (2. * M_PI * M_PI) * int_cquad(fXi_L, q);
     else {
         double result1, result2, error;
@@ -737,7 +736,7 @@ double Xi_L(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_SINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_SINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t, &result2, &error);
 
         gsl_integration_workspace_free(w1);
@@ -761,7 +760,7 @@ double fU_1_qawo(double k, void *p) {
 }
 
 double U_1(double q) {
-    if (kmax < xpivot_UYXi / q)
+    if (kmax_integ * q < xpivot_UYXi)
         return 1. / (2. * M_PI * M_PI) * int_cquad(fU_1, q);
     else {
         double result1, result2, error;
@@ -776,7 +775,7 @@ double U_1(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-4, 200, w1, w2, t, &result2, &error);
 
         gsl_integration_workspace_free(w1);
@@ -798,7 +797,7 @@ double fU_3_qawo(double k, void *p) {
 }
 
 double U_3(double q) {
-    if (kmax < xpivot_UYXi / q)
+    if (kmax_integ * q < xpivot_UYXi)
         return 1. / (2. * M_PI * M_PI) * int_cquad(fU_3, q);
     else {
         double result1, result2, error;
@@ -813,7 +812,7 @@ double U_3(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-4, 200, w1, w2, t, &result2, &error);
 
         gsl_integration_workspace_free(w1);
@@ -835,7 +834,7 @@ double fU_11_qawo(double k, void *p) {
 }
 
 double U_11(double q) {
-    if (kmax < xpivot_UYXi / q)
+    if (kmax_integ * q < xpivot_UYXi)
         return 1. / (2. * M_PI * M_PI) * int_cquad(fU_11, q);
     else {
         double result1, result2, error;
@@ -850,7 +849,7 @@ double U_11(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-4, 200, w1, w2, t, &result2, &error);
 
         gsl_integration_workspace_free(w1);
@@ -872,7 +871,7 @@ double fU_20_qawo(double k, void *p) {
 }
 
 double U_20(double q) {
-    if (kmax < xpivot_UYXi / q) {
+    if (kmax_integ * q < xpivot_UYXi) {
         return 1. / (2. * M_PI * M_PI) * int_cquad(fU_20, q);
     } else {
         double result1, result2, error;
@@ -887,7 +886,7 @@ double U_20(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-4, 200, w1, w2, t, &result2, &error);
 
         gsl_integration_workspace_free(w1);
@@ -968,7 +967,7 @@ double fY_11_qawo_2_over_2(double k, void *p) {
 }
 
 double Y_11(double q) {
-    if (kmax < xpivot_UYXi / q)
+    if (kmax_integ * q < xpivot_UYXi)
         return 1. / (2. * M_PI * M_PI) * int_cquad(fY_11, q);
     else {
         double result1, result2, result3, error;
@@ -983,14 +982,14 @@ double Y_11(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_SINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_SINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t, &result2, &error);
 
         // Second integration with qawo 2/2
         alpha = 1. / (2. * M_PI * M_PI * q * q);
         F.function = &fY_11_qawo_2_over_2;
         F.params = &alpha;
-        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t2, &result3, &error);
 
         gsl_integration_workspace_free(w1);
@@ -1019,7 +1018,7 @@ double fY_22_qawo_2_over_2(double k, void *p) {
 }
 
 double Y_22(double q) {
-    if (kmax < xpivot_UYXi / q)
+    if (kmax_integ * q < xpivot_UYXi)
         return 1. / (2. * M_PI * M_PI) * int_cquad(fY_22, q);
     else {
         double result1, result2, result3, error;
@@ -1034,14 +1033,14 @@ double Y_22(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_SINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_SINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t, &result2, &error);
 
         // Second integration with qawo 2/2
         alpha = 1. / (2. * M_PI * M_PI * q * q);
         F.function = &fY_22_qawo_2_over_2;
         F.params = &alpha;
-        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t2, &result3, &error);
 
         gsl_integration_workspace_free(w1);
@@ -1070,7 +1069,7 @@ double fY_13_qawo_2_over_2(double k, void *p) {
 }
 
 double Y_13(double q) {
-    if (kmax < xpivot_UYXi / q)
+    if (kmax_integ * q < xpivot_UYXi)
         return 1. / (2. * M_PI * M_PI) * int_cquad(fY_13, q);
     else {
         double result1, result2, result3, error;
@@ -1085,14 +1084,14 @@ double Y_13(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_SINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_SINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t, &result2, &error);
 
         // Second integration with qawo 2/2
         alpha = 1. / (2. * M_PI * M_PI * q * q);
         F.function = &fY_13_qawo_2_over_2;
         F.params = &alpha;
-        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t2, &result3, &error);
 
         gsl_integration_workspace_free(w1);
@@ -1121,7 +1120,7 @@ double fY_10_12_qawo_2_over_2(double k, void *p) {
 }
 
 double Y_10_12(double q) {
-    if (kmax < xpivot_UYXi / q)
+    if (kmax_integ * q < xpivot_UYXi)
         return 1. / (2. * M_PI * M_PI) * int_cquad(fY_10_12, q);
     else {
         double result1, result2, result3, error;
@@ -1136,14 +1135,14 @@ double Y_10_12(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_SINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_SINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t, &result2, &error);
 
         // Second integration with qawo 2/2
         alpha = 1. / (2. * M_PI * M_PI * q * q);
         F.function = &fY_10_12_qawo_2_over_2;
         F.params = &alpha;
-        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t2, &result3, &error);
 
         gsl_integration_workspace_free(w1);
@@ -1175,9 +1174,9 @@ double fV1_112_qawo_2_over_2(double k, void *p) {
 }
 
 double V1_112(double q) {
-    if (q < 3e-8 / kmin)
+    if (kmin_integ * q < EPS)
         return 0;
-    else if (kmax < xpivot_TV / q) {
+    else if (kmax_integ * q < xpivot_TV) {
         return 1. / (2. * M_PI * M_PI) * int_cquad(fV1_112, q);
     } else {
         double result1, result2, result3, error;
@@ -1192,13 +1191,13 @@ double V1_112(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_TV / q, 1e-6, 200, w1, w2, t, &result2, &error);
 
         // Second integration with qawo 2/2
         F.function = &fV1_112_qawo_2_over_2;
         F.params = &alpha;
-        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_SINE, size);
+        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_SINE, size);
         gsl_integration_qawf(&F, xpivot_TV / q, 1e-6, 200, w1, w2, t2, &result3, &error);
 
         gsl_integration_workspace_free(w1);
@@ -1230,9 +1229,9 @@ double fV3_112_qawo_2_over_2(double k, void *p) {
 // V^112_3+S^112
 
 double V3_112(double q) {
-    if (q < 3e-8 / kmin)
+    if (kmin_integ * q < EPS)
         return 0;
-    else if (kmax < xpivot_TV / q) {
+    else if (kmax_integ * q < xpivot_TV) {
         return 1. / (2. * M_PI * M_PI) * int_cquad(fV3_112, q);
     } else {
         double result1, result2, result3, error;
@@ -1247,13 +1246,13 @@ double V3_112(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_TV / q, 1e-6, 200, w1, w2, t, &result2, &error);
 
         // Second integration with qawo 2/2
         F.function = &fV3_112_qawo_2_over_2;
         F.params = &alpha;
-        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_SINE, size);
+        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_SINE, size);
         gsl_integration_qawf(&F, xpivot_TV / q, 1e-6, 200, w1, w2, t2, &result3, &error);
 
         gsl_integration_workspace_free(w1);
@@ -1276,7 +1275,7 @@ double fV_10_qawo(double k, void *p) {
 }
 
 double V_10(double q) {
-    if (kmax < xpivot_TV / q)
+    if (kmax_integ * q < xpivot_TV)
         return 1. / (2. * M_PI * M_PI) * int_cquad(fV_10, q);
     else {
         double result1, result2, error;
@@ -1291,7 +1290,7 @@ double V_10(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_TV / q, 1e-4, 200, w1, w2, t, &result2, &error);
 
         gsl_integration_workspace_free(w1);
@@ -1314,9 +1313,9 @@ double fT_112_qawo(double k, void *p) {
 }
 
 double T_112(double q) {
-    if (q < 3e-8 / kmin)
+    if (kmin_integ * q < EPS)
         return 0;
-    else if (kmax < xpivot_TV / q)
+    else if (kmax_integ * q < xpivot_TV)
         return 1. / (2. * M_PI * M_PI) * int_cquad(fT_112, q);
     else {
         double result1, result2, error;
@@ -1331,7 +1330,7 @@ double T_112(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax - kmin, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_TV / q, 1e-6, 200, w1, w2, t, &result2, &error);
 
         gsl_integration_workspace_free(w1);
@@ -2366,9 +2365,9 @@ void compute_and_interpolate_jfuncs(void) {
     unsigned int i;
     double q;
     const double qmax = 2000;        // Maximum q to compute the q functions, 2000 by default
-    const unsigned int nbins = 3000; // Number of steps
+    const unsigned int nbins = 3001; // Number of steps
     const double log_qmax = log10(qmax);
-    const double dq = log_qmax / (nbins - 1);
+    const double dq = log_qmax / (nbins - 2);
 
     printf("getting jfunctions...\n");
     double q_array[nbins], B1[nbins], B2[nbins], J2[nbins], J3[nbins], J4[nbins], v12[nbins], chi12[nbins], zeta[nbins];
@@ -2532,7 +2531,6 @@ void compute_and_interpolate_qfuncs(int dofast) {
     printf("getting qfunctions...\n");
     double q_array[nbins], xil[nbins], X_x11[nbins], X_x13[nbins], X_x22[nbins], X_x1012[nbins], Y_y11[nbins], Y_y13[nbins], Y_y22[nbins], Y_y1012[nbins],
         U_u1[nbins], U_u3[nbins], U_u11[nbins], U_u20[nbins], W_v1[nbins], W_v3[nbins], W_t[nbins], W_v10[nbins];
-
     q_array[0] = xil[0] = X_x11[0] = X_x13[0] = X_x22[0] = X_x1012[0] = Y_y11[0] = Y_y13[0] = Y_y22[0] = Y_y1012[0] = U_u1[0] = U_u3[0] = U_u11[0] = U_u20[0] = W_v1[0] = W_v3[0] = W_t[0] = W_v10[0] = 0.;
 
     // Reset logq in the beginning
@@ -2672,8 +2670,8 @@ void initialize_CLEFT(char pk_filename[]) {
     }
     fclose(ps);
     // Add buffer zone for P(k) integrals
-    kmin += EPS;
-    kmax -= EPS;
+    kmin_integ = kmin + EPS;
+    kmax_integ = kmax - EPS;
 
     interpole(1, pk_filename, nLines, nHeader);
 
