@@ -736,7 +736,7 @@ double Xi_L(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_SINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_SINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t, &result2, &error);
 
         gsl_integration_workspace_free(w1);
@@ -775,7 +775,7 @@ double U_1(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-4, 200, w1, w2, t, &result2, &error);
 
         gsl_integration_workspace_free(w1);
@@ -812,7 +812,7 @@ double U_3(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-4, 200, w1, w2, t, &result2, &error);
 
         gsl_integration_workspace_free(w1);
@@ -849,7 +849,7 @@ double U_11(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-4, 200, w1, w2, t, &result2, &error);
 
         gsl_integration_workspace_free(w1);
@@ -886,7 +886,7 @@ double U_20(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-4, 200, w1, w2, t, &result2, &error);
 
         gsl_integration_workspace_free(w1);
@@ -982,14 +982,14 @@ double Y_11(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_SINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_SINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t, &result2, &error);
 
         // Second integration with qawo 2/2
         alpha = 1. / (2. * M_PI * M_PI * q * q);
         F.function = &fY_11_qawo_2_over_2;
         F.params = &alpha;
-        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t2, &result3, &error);
 
         gsl_integration_workspace_free(w1);
@@ -1033,14 +1033,14 @@ double Y_22(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_SINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_SINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t, &result2, &error);
 
         // Second integration with qawo 2/2
         alpha = 1. / (2. * M_PI * M_PI * q * q);
         F.function = &fY_22_qawo_2_over_2;
         F.params = &alpha;
-        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t2, &result3, &error);
 
         gsl_integration_workspace_free(w1);
@@ -1084,14 +1084,14 @@ double Y_13(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_SINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_SINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t, &result2, &error);
 
         // Second integration with qawo 2/2
         alpha = 1. / (2. * M_PI * M_PI * q * q);
         F.function = &fY_13_qawo_2_over_2;
         F.params = &alpha;
-        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t2, &result3, &error);
 
         gsl_integration_workspace_free(w1);
@@ -1127,7 +1127,7 @@ double Y_10_12(double q) {
         // First integration using cquad
         result1 = 1. / (2. * M_PI * M_PI) * int_cquad_pivot_UYXi(fY_10_12, q);
 
-        // Second integration with qawo 1/2
+        // Second integration with qawo 1/2Y_10_12Y_10_12
         double alpha = 1. / (2. * M_PI * M_PI * q);
         gsl_function F;
         F.function = &fY_10_12_qawo_1_over_2;
@@ -1135,15 +1135,15 @@ double Y_10_12(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_SINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_SINE, size);
         gsl_integration_qawf(&F, xpivot_UYXi / q, 2e-5, 200, w1, w2, t, &result2, &error);
 
         // Second integration with qawo 2/2
         alpha = 1. / (2. * M_PI * M_PI * q * q);
         F.function = &fY_10_12_qawo_2_over_2;
         F.params = &alpha;
-        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
-        gsl_integration_qawf(&F, xpivot_UYXi / q, 2e-5, 200, w1, w2, t2, &result3, &error);
+        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_COSINE, size);
+        gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t2, &result3, &error);
 
         gsl_integration_workspace_free(w1);
         gsl_integration_workspace_free(w2);
@@ -1191,13 +1191,13 @@ double V1_112(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_TV / q, 1e-6, 200, w1, w2, t, &result2, &error);
 
         // Second integration with qawo 2/2
         F.function = &fV1_112_qawo_2_over_2;
         F.params = &alpha;
-        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_SINE, size);
+        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_SINE, size);
         gsl_integration_qawf(&F, xpivot_TV / q, 1e-6, 200, w1, w2, t2, &result3, &error);
 
         gsl_integration_workspace_free(w1);
@@ -1246,13 +1246,13 @@ double V3_112(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_TV / q, 1e-6, 200, w1, w2, t, &result2, &error);
 
         // Second integration with qawo 2/2
         F.function = &fV3_112_qawo_2_over_2;
         F.params = &alpha;
-        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_SINE, size);
+        gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_SINE, size);
         gsl_integration_qawf(&F, xpivot_TV / q, 1e-6, 200, w1, w2, t2, &result3, &error);
 
         gsl_integration_workspace_free(w1);
@@ -1290,7 +1290,7 @@ double V_10(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_TV / q, 1e-4, 200, w1, w2, t, &result2, &error);
 
         gsl_integration_workspace_free(w1);
@@ -1330,7 +1330,7 @@ double T_112(double q) {
 
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
-        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
+        gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, 0, GSL_INTEG_COSINE, size);
         gsl_integration_qawf(&F, xpivot_TV / q, 1e-6, 200, w1, w2, t, &result2, &error);
 
         gsl_integration_workspace_free(w1);
