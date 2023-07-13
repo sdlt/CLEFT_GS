@@ -1136,14 +1136,14 @@ double Y_10_12(double q) {
         gsl_integration_workspace *w1 = gsl_integration_workspace_alloc(200);
         gsl_integration_workspace *w2 = gsl_integration_workspace_alloc(200);
         gsl_integration_qawo_table *t = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_SINE, size);
-        gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t, &result2, &error);
+        gsl_integration_qawf(&F, xpivot_UYXi / q, 2e-5, 200, w1, w2, t, &result2, &error);
 
         // Second integration with qawo 2/2
         alpha = 1. / (2. * M_PI * M_PI * q * q);
         F.function = &fY_10_12_qawo_2_over_2;
         F.params = &alpha;
         gsl_integration_qawo_table *t2 = gsl_integration_qawo_table_alloc(q, kmax_integ - kmin_integ, GSL_INTEG_COSINE, size);
-        gsl_integration_qawf(&F, xpivot_UYXi / q, 1e-5, 200, w1, w2, t2, &result3, &error);
+        gsl_integration_qawf(&F, xpivot_UYXi / q, 2e-5, 200, w1, w2, t2, &result3, &error);
 
         gsl_integration_workspace_free(w1);
         gsl_integration_workspace_free(w2);
@@ -2248,9 +2248,9 @@ void write_ingredients(char file[]) {
     for (r = 1; r <= r_max; r += 1) {
         double M0[n0], M1[n1], M2[n2];
 
-        gl_int6(0, 50, &M_0, &r, M0, n0);
-        gl_int6(0, 50, &M_1, &r, M1, n1);
-        gl_int6(0, 50, &M_2, &r, M2, n2);
+        gl_int6(0, 100, &M_0, &r, M0, n0);
+        gl_int6(0, 100, &M_1, &r, M1, n1);
+        gl_int6(0, 100, &M_2, &r, M2, n2);
         M0[0] -= 1;
 
         fprintf(fi, "%.13le %.13le ", r, iXi_L(r));
@@ -2559,20 +2559,35 @@ void compute_and_interpolate_qfuncs(int dofast) {
             W_v10[i] = funcs[15];
         } else {
             X_x11[i] = X_11(q);
+            printf("X11 \n");
             X_x22[i] = X_22(q);
+            printf("X22 \n");
             X_x13[i] = X_13(q);
+            printf("X13 \n");
             Y_y11[i] = Y_11(q);
+            printf("Y11 \n");
             Y_y22[i] = Y_22(q);
+            printf("Y22 \n");
             Y_y13[i] = Y_13(q);
+            printf("Y13 \n");
             X_x1012[i] = X_10_12(q);
+            printf("X1012 \n");
             Y_y1012[i] = Y_10_12(q);
+            printf("Y1012 \n");
             W_v1[i] = V1_112(q);
+            printf("V1112 \n");
             W_v3[i] = V3_112(q);
+            printf("V3112 \n");
             W_t[i] = T_112(q);
+            printf("T112 \n");
             U_u1[i] = U_1(q);
+            printf("U1 \n");
             U_u3[i] = U_3(q);
+            printf("U3 \n");
             U_u20[i] = U_20(q);
+            printf("U20 \n");
             U_u11[i] = U_11(q);
+            printf("U11 \n");
             W_v10[i] = V_10(q);
         }
     }

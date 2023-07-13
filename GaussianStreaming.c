@@ -388,6 +388,31 @@ void load_CLEFT(char *file) {
     nrs = n;
 }
 
+// This is a wrappable loading function where we can give a pointer to a numpy ingredients file directly, rather than specifying a filename
+// I am assuming here that the ingredinets_file is stored by python as a C-contiguous array in memory (this can be checked once we write the wrapper
+// Also I am assuming that the first dimension of the array is the number of bins in r and then the second dimension is the number of ingredients (in this case 39)
+void load_CLEFT_wrappable(double* ingredients_file, int num_bins) {
+    // Ok so we just hardcode the number of ingredients to be 39 as we won't change that
+    int i, j, nc = 39;
+
+    // Allocate memory for ingredients file
+    data = (double **)malloc(sizeof(double *) * nc);
+    for (i = 0; i < nc; i++)
+        data[i] = (double *)malloc(sizeof(double) * num_bins);
+
+
+    // Write the ingredients into the global data array
+    for (i = 0; i < num_bins; i++)
+        for (j = 0; j < nc; j++)
+            // Standard 'accessing a 2D array flattened into 1D'
+            data[j][i] = ingredients_file[i*nc+j];
+
+    rmin = data[0][0];
+    rmax = data[0][num_bins - 1];
+
+    nrs = num_bins;
+}
+
 void free_CLEFT(void) {
     free(data);
 }
