@@ -205,23 +205,21 @@ void interpSigma12(double *p) {
 /****************\\ Correlation function in z-space for CLPT prediction \\**********************************************************************************************/
 
 double fXis(double y, double p[]) {
-    const double spara = p[0];
     const double rperp = p[1];
     const double fg = p[2];
     const double sigv = p[3];
 
     const double r = sqrt(rperp * rperp + y * y);
     const double xi_r = Xi(r);
-    const double v = fg * V12(r) / (1. + xi_r);
     const double mu_r = y / r;
+    const double var = fg * fg * Sigma12(xi_r, mu_r, r) + sigv;
+    if (var <= 0)
+        return 0;
+    const double spara = p[0];
+    const double v = fg * V12(r) / (1. + xi_r);
     const double x = spara - y;
     const double mean = mu_r * v;
-    const double var = fg * fg * Sigma12(xi_r, mu_r, r) + sigv;
-
-    if (var > 0)
-        return (1. + xi_r) * gauss(x, mean, var);
-    else
-        return 0;
+    return (1. + xi_r) * gauss(x, mean, var);
 }
 
 double Xis(double sperp, double spara, double p[]) {
