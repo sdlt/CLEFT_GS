@@ -24,7 +24,7 @@ gsl_spline *spline[4];
 const double y_spanning = 50;
 double rmin, rmax;
 double **data;
-int nrs;
+unsigned int nrs;
 
 /*******************\\ Gauss-Legendre integral quadrature\\**************************************************************************************************************/
 
@@ -87,8 +87,8 @@ static const double A[] = {
 
 double Gauss_Legendre_Integration2_100pts(double a, double b, double (*f)(double, double[]), void *prms) {
     double integral = 0.0;
-    double c = 0.5 * (b - a);
-    double d = 0.5 * (b + a);
+    const double c = 0.5 * (b - a);
+    const double d = 0.5 * (b + a);
     double dum;
     const double *px = &x[NUM_OF_POSITIVE_ZEROS - 1];
     const double *pA = &A[NUM_OF_POSITIVE_ZEROS - 1];
@@ -101,12 +101,11 @@ double Gauss_Legendre_Integration2_100pts(double a, double b, double (*f)(double
 }
 
 void Gauss_Legendre_Integration2_100pts_array(double a, double b, void (*f)(double, double[], double[]), double prms[], double result[], int n) {
-    int i;
     double integral[n];
-    for (i = 0; i < n; i++)
+    for (unsigned int i = 0; i < n; i++)
         integral[i] = 0;
-    double c = 0.5 * (b - a);
-    double d = 0.5 * (b + a);
+    const double c = 0.5 * (b - a);
+    const double d = 0.5 * (b + a);
     double dum;
     const double *px = &x[NUM_OF_POSITIVE_ZEROS - 1];
     const double *pA = &A[NUM_OF_POSITIVE_ZEROS - 1];
@@ -116,10 +115,10 @@ void Gauss_Legendre_Integration2_100pts_array(double a, double b, void (*f)(doub
         dum = c * *px;
         (*f)(d - dum, prms, outi);
         (*f)(d + dum, prms, outs);
-        for (i = 0; i < n; i++)
+        for (unsigned int i = 0; i < n; i++)
             integral[i] += *pA * (outi[i] + outs[i]);
     }
-    for (i = 0; i < n; i++)
+    for (unsigned int i = 0; i < n; i++)
         result[i] = c * integral[i];
 }
 
@@ -141,9 +140,8 @@ double Xi(double r) {
 void interpXi(double p[]) {
     // xi_L, xi_1, xi_b1, xi_b2, xi_b1^2, xi_b1.b2, xi_b2^2, xi_bs, xi_bs^2, xi_b1.bs, xi_b2.bs, xi_A, xi_bn2, xi_b1.bn2
     double xi[nrs];
-    int i;
 
-    for (i = 0; i < nrs; i++)
+    for (unsigned int i = 0; i < nrs; i++)
         xi[i] = data[2][i] + p[1] * data[3][i] + p[2] * data[4][i] + p[1] * p[1] * data[5][i] + p[1] * p[2] * data[6][i] + p[2] * p[2] * data[7][i] + p[3] * data[8][i] + p[3] * p[3] * data[9][i] + p[1] * p[3] * data[10][i] + p[2] * p[3] * data[11][i] + p[4] * data[13][i] + p[1] * p[4] * data[14][i] + p[8] * data[12][i];
 
     acc[0] = gsl_interp_accel_alloc();
@@ -163,9 +161,8 @@ double V12(double r) {
 void interpV12(double p[]) {
     // v_1, v_b1, v_b2, v_b1^2, v_b1.b2, v_A, v_Ap, v_bn2, v_bs, v_b1.bs
     double v12[nrs];
-    int i;
 
-    for (i = 0; i < nrs; i++)
+    for (unsigned int i = 0; i < nrs; i++)
         v12[i] = data[15][i] + p[1] * data[16][i] + p[2] * data[17][i] + p[1] * p[1] * data[18][i] + p[1] * p[2] * data[19][i] + p[3] * data[23][i] + p[1] * p[3] * data[24][i] + p[4] * data[22][i] + p[9] * data[20][i] + p[10] * data[21][i];
 
     acc[1] = gsl_interp_accel_alloc();
@@ -190,9 +187,8 @@ double Sigma12(double xi, double mu, double r) {
 void interpSigma12(double *p) {
     // spar_1, spar_b1, spar_b2, spar_b1^2, spar_bs, spar_A, spar_B, s_1, s_b1, s_b2, s_b1^2, s_bs, s_A, s_B
     double spa[nrs], spe[nrs];
-    int i;
 
-    for (i = 0; i < nrs; i++) {
+    for (unsigned int i = 0; i < nrs; i++) {
         spa[i] = data[25][i] + p[1] * data[26][i] + p[2] * data[27][i] + p[1] * p[1] * data[28][i] + p[3] * data[29][i] + p[11] * data[30][i] + p[12] * data[31][i];
         spe[i] = data[32][i] + p[1] * data[33][i] + p[2] * data[34][i] + p[1] * p[1] * data[35][i] + p[3] * data[36][i] + p[11] * data[37][i] + p[12] * data[38][i];
     }
@@ -209,18 +205,18 @@ void interpSigma12(double *p) {
 /****************\\ Correlation function in z-space for CLPT prediction \\**********************************************************************************************/
 
 double fXis(double y, double p[]) {
-    double spara = p[0];
-    double rperp = p[1];
-    double fg = p[2];
-    double sigv = p[3];
+    const double spara = p[0];
+    const double rperp = p[1];
+    const double fg = p[2];
+    const double sigv = p[3];
 
-    double r = sqrt(rperp * rperp + y * y);
-    double xi_r = Xi(r);
-    double v = fg * V12(r) / (1. + xi_r);
-    double mu_r = y / r;
-    double x = spara - y;
-    double mean = mu_r * v;
-    double var = fg * fg * Sigma12(xi_r, mu_r, r) + sigv;
+    const double r = sqrt(rperp * rperp + y * y);
+    const double xi_r = Xi(r);
+    const double v = fg * V12(r) / (1. + xi_r);
+    const double mu_r = y / r;
+    const double x = spara - y;
+    const double mean = mu_r * v;
+    const double var = fg * fg * Sigma12(xi_r, mu_r, r) + sigv;
 
     if (var > 0)
         return (1. + xi_r) * gauss(x, mean, var);
@@ -229,14 +225,14 @@ double fXis(double y, double p[]) {
 }
 
 double Xis(double sperp, double spara, double p[]) {
-    double result, params[4];
+    double params[4];
 
     params[0] = spara;
     params[1] = sperp;
     params[2] = p[0];
     params[3] = p[1];
 
-    result = Gauss_Legendre_Integration2_100pts(spara - y_spanning, spara + y_spanning, &fXis, params);
+    const double result = Gauss_Legendre_Integration2_100pts(spara - y_spanning, spara + y_spanning, &fXis, params);
 
     return result - 1.;
 }
@@ -244,17 +240,15 @@ double Xis(double sperp, double spara, double p[]) {
 /****************\\Legendre Multipole with CLPT prediction\\*********************************************************************************************************/
 
 void fmultipole(double mu, double p[], double result[]) {
+    const double s = p[0];
+    const double apar = p[3];
+    const double aper = p[4];
+    const double spara = apar * s * mu;
+    const double rperp = aper * s * sqrt(1. - mu * mu);
     double par[2];
-    double s = p[0];
-    double apar = p[3];
-    double aper = p[4];
-
     par[0] = p[1];
     par[1] = p[2];
-
-    double spara = apar * s * mu;
-    double rperp = aper * s * sqrt(1. - mu * mu);
-    double xi_s = Xis(rperp, spara, par);
+    const double xi_s = Xis(rperp, spara, par);
 
     result[0] = xi_s * gsl_sf_legendre_Pl(0, mu);
     result[1] = xi_s * gsl_sf_legendre_Pl(2, mu);
@@ -262,7 +256,6 @@ void fmultipole(double mu, double p[], double result[]) {
 }
 
 void multipole(double s, double p[], double result[]) {
-    int i;
     double par[5];
 
     par[0] = s;
@@ -277,7 +270,7 @@ void multipole(double s, double p[], double result[]) {
 
     Gauss_Legendre_Integration2_100pts_array(0, 1, &fmultipole, par, result, 3);
 
-    for (i = 0; i < 4; i++) {
+    for (unsigned int i = 0; i < 4; i++) {
         gsl_spline_free(spline[i]);
         gsl_interp_accel_free(acc[i]);
     }
@@ -346,21 +339,21 @@ int GetNumCols(char file[]) {
 }
 
 void load_CLEFT(char *file) {
-    int i, j, n, nc = 39;
+    const unsigned int nc = 39;
     char filename[strlen(file) + 1 + 7];
     FILE *fi;
 
     strcpy(filename, file);
     strcat(filename, ".cleft");
 
-    n = GetNumLines(filename);
+    const unsigned int n = GetNumLines(filename);
     if (GetNumCols(filename) != nc) {
         fprintf(stderr, "Error: unknown file format\n");
         exit(1);
     }
 
     data = (double **)malloc(sizeof(double *) * nc);
-    for (i = 0; i < nc; i++)
+    for (unsigned int i = 0; i < nc; i++)
         data[i] = (double *)malloc(sizeof(double) * n);
 
     fi = fopen(filename, "r");
@@ -376,8 +369,8 @@ void load_CLEFT(char *file) {
         }
         fsetpos(fi, &pos);
 
-        for (i = 0; i < n; i++)
-            for (j = 0; j < nc; j++)
+        for (unsigned int i = 0; i < n; i++)
+            for (unsigned int j = 0; j < nc; j++)
                 fscanf(fi, "%lf", &data[j][i]);
     }
     fclose(fi);
@@ -421,10 +414,8 @@ void free_CLEFT(void) {
 
 void get_prediction_CLPT(double smin, double smax, int nbins, double out[],
                          double in_f, double in_b1, double in_b2, double in_sigv, double in_alpha_par, double in_alpha_per) {
-    int i;
-    double par[13];
-    double ds = (smax - smin) / (double)nbins;
-    double out_tmp[3];
+    const double ds = (smax - smin) / (double)nbins;
+    double out_tmp[3], par[13];
 
     par[0] = in_f;
     par[1] = in_b1;
@@ -436,7 +427,7 @@ void get_prediction_CLPT(double smin, double smax, int nbins, double out[],
     par[7] = in_alpha_per;
     par[8] = par[9] = par[10] = par[11] = par[12] = 0;
 
-    for (i = 0; i < nbins; i++) {
+    for (unsigned int i = 0; i < nbins; i++) {
         double s = smin + i * ds + 0.5 * ds;
         multipole(s, par, out_tmp);
         out[i] = out_tmp[0];
@@ -447,10 +438,8 @@ void get_prediction_CLPT(double smin, double smax, int nbins, double out[],
 
 void get_prediction_CLPT_allbias(double smin, double smax, int nbins, double out[],
                                  double in_f, double in_b1, double in_b2, double in_b3, double in_b4, double in_sigv, double in_alpha_par, double in_alpha_per) {
-    int i;
-    double par[13];
-    double ds = (smax - smin) / (double)nbins;
-    double out_tmp[3];
+    const double ds = (smax - smin) / (double)nbins;
+    double out_tmp[3], par[13];
 
     par[0] = in_f;
     par[1] = in_b1;
@@ -462,8 +451,8 @@ void get_prediction_CLPT_allbias(double smin, double smax, int nbins, double out
     par[7] = in_alpha_per;
     par[8] = par[9] = par[10] = par[11] = par[12] = 0;
 
-    for (i = 0; i < nbins; i++) {
-        double s = smin + i * ds + 0.5 * ds;
+    for (unsigned int i = 0; i < nbins; i++) {
+        const double s = smin + i * ds + 0.5 * ds;
         multipole(s, par, out_tmp);
         out[i] = out_tmp[0];
         out[nbins + i] = 5 * out_tmp[1];
@@ -473,10 +462,8 @@ void get_prediction_CLPT_allbias(double smin, double smax, int nbins, double out
 
 void get_prediction_CLEFT(double smin, double smax, int nbins, double out[],
                           double in_f, double in_b1, double in_b2, double in_bs, double in_ax, double in_av, double in_as, double in_alpha_par, double in_alpha_per) {
-    int i;
-    double par[13];
-    double ds = (smax - smin) / (double)nbins;
-    double out_tmp[3];
+    const double ds = (smax - smin) / (double)nbins;
+    double par[13], out_tmp[3];
 
     par[0] = in_f;
     par[1] = in_b1;
@@ -494,8 +481,8 @@ void get_prediction_CLEFT(double smin, double smax, int nbins, double out[],
 
     // clock_t begin = clock();
 
-    for (i = 0; i < nbins; i++) {
-        double s = smin + i * ds + 0.5 * ds;
+    for (unsigned int i = 0; i < nbins; i++) {
+        const double s = smin + i * ds + 0.5 * ds;
         multipole(s, par, out_tmp);
         out[i] = out_tmp[0];
         out[nbins + i] = 5 * out_tmp[1];
@@ -511,7 +498,6 @@ void get_prediction_CLEFT(double smin, double smax, int nbins, double out[],
 /***************\\MAIN FUNCTION\\**********************************************************************************************************************************/
 
 int main(int argc, char *argv[]) {
-    int i;
     double out[120];
 
     load_CLEFT(argv[1]);
@@ -519,7 +505,7 @@ int main(int argc, char *argv[]) {
 
     get_prediction_CLPT(0, 200, 40, out, 1.0, 0.1, 0.5, 5, 1, 1);
 
-    for (i = 0; i < 40; i++)
+    for (unsigned int i = 0; i < 40; i++)
         printf("%le %le %le %le\n", i * 5 + 2.5, out[i], out[40 + i], out[80 + i]);
 
     free_CLEFT();
