@@ -2559,35 +2559,20 @@ void compute_and_interpolate_qfuncs(int dofast) {
             W_v10[i] = funcs[15];
         } else {
             X_x11[i] = X_11(q);
-            printf("X11 \n");
             X_x22[i] = X_22(q);
-            printf("X22 \n");
             X_x13[i] = X_13(q);
-            printf("X13 \n");
             Y_y11[i] = Y_11(q);
-            printf("Y11 \n");
             Y_y22[i] = Y_22(q);
-            printf("Y22 \n");
             Y_y13[i] = Y_13(q);
-            printf("Y13 \n");
             X_x1012[i] = X_10_12(q);
-            printf("X1012 \n");
             Y_y1012[i] = Y_10_12(q);
-            printf("Y1012 \n");
             W_v1[i] = V1_112(q);
-            printf("V1112 \n");
             W_v3[i] = V3_112(q);
-            printf("V3112 \n");
             W_t[i] = T_112(q);
-            printf("T112 \n");
             U_u1[i] = U_1(q);
-            printf("U1 \n");
             U_u3[i] = U_3(q);
-            printf("U3 \n");
             U_u20[i] = U_20(q);
-            printf("U20 \n");
             U_u11[i] = U_11(q);
-            printf("U11 \n");
             W_v10[i] = V_10(q);
         }
     }
