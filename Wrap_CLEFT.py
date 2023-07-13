@@ -3,9 +3,12 @@ import numpy as np
 from ctypes import pointer
 from numpy.ctypeslib import ndpointer
 import matplotlib.pyplot as plt
+import os
 
 # This is the same as numpy.ctypeslib.load_library
-CLEFT_library = ctypes.CDLL("/home/mkarcher/CLEFT_GS/libCLEFT.so")
+#CLEFT_library = ctypes.CDLL("/home/mkarcher/CLEFT_GS/libCLEFT.so")
+dir_name = "/home/mkarcher/CLEFT_GS/"
+CLEFT_library = ctypes.CDLL(f"{dir_name}libCLEFT.so")
 
 # Create/load the loading function
 load_CLEFT_wrapped = CLEFT_library.load_CLEFT_wrappable
