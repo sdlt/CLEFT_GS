@@ -428,6 +428,7 @@ void get_prediction_ZA(double smin, double smax, int nbins, double out[],
         gsl_spline_free(spline[i]);
         gsl_interp_accel_free(acc[i]);
     }
+    free_CLEFT();
 }
 
 void get_prediction_CLPT(double smin, double smax, int nbins, double out[],
@@ -461,6 +462,7 @@ void get_prediction_CLPT(double smin, double smax, int nbins, double out[],
         gsl_spline_free(spline[i]);
         gsl_interp_accel_free(acc[i]);
     }
+    free_CLEFT();
 }
 
 void get_prediction_CLPT_allbias(double smin, double smax, int nbins, double out[],
@@ -494,6 +496,7 @@ void get_prediction_CLPT_allbias(double smin, double smax, int nbins, double out
         gsl_spline_free(spline[i]);
         gsl_interp_accel_free(acc[i]);
     }
+    free_CLEFT();
 }
 
 void get_prediction_CLEFT(double smin, double smax, int nbins, double out[],
@@ -534,6 +537,7 @@ void get_prediction_CLEFT(double smin, double smax, int nbins, double out[],
         gsl_interp_accel_free(acc[i]);
     }
 
+    free_CLEFT();
     // clock_t end = clock();
     // double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
     // printf("Time spent: %fs\n", time_spent);
@@ -552,8 +556,6 @@ int main(int argc, char *argv[]) {
 
     for (unsigned int i = 0; i < 40; i++)
         printf("%le %le %le %le\n", i * 5 + 2.5, out[i], out[40 + i], out[80 + i]);
-
-    free_CLEFT();
 
     return 0;
 }
