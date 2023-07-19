@@ -388,6 +388,9 @@ void load_CLEFT_wrappable(double *data_in, const unsigned int nrows) {
 }
 
 void free_CLEFT(void) {
+    for (int i = 0; i < 39; i++) {
+        free(data[i]);
+    }
     free(data);
 }
 
