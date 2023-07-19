@@ -254,24 +254,8 @@ void fmultipole(double mu, double p[], double result[]) {
 }
 
 void multipole(double s, double p[], double result[]) {
-    double par[5];
-
-    par[0] = s;
-    par[1] = p[0];
-    par[2] = p[5];
-    par[3] = p[6];
-    par[4] = p[7];
-
-    interpXi(p);
-    interpV12(p);
-    interpSigma12(p);
-
+    const double par[5] = {s, p[0], p[5], p[6], p[7]};
     Gauss_Legendre_Integration2_100pts_array(0, 1, &fmultipole, par, result, 3);
-
-    for (unsigned int i = 0; i < 4; i++) {
-        gsl_spline_free(spline[i]);
-        gsl_interp_accel_free(acc[i]);
-    }
 }
 
 /***********\\ Reading and interpolation \\*****************************************************************************************************************************/
@@ -425,12 +409,21 @@ void get_prediction_ZA(double smin, double smax, int nbins, double out[],
     par[7] = in_alpha_per;
     par[8] = par[9] = par[10] = par[11] = par[12] = 0;
 
+    interpXi(par);
+    interpV12(par);
+    interpSigma12(par);
+
     for (unsigned int i = 0; i < nbins; i++) {
         double s = smin + i * ds + 0.5 * ds;
         multipole(s, par, out_tmp);
         out[i] = out_tmp[0];
         out[nbins + i] = 5 * out_tmp[1];
         out[2 * nbins + i] = 9 * out_tmp[2];
+    }
+
+    for (unsigned int i = 0; i < 4; i++) {
+        gsl_spline_free(spline[i]);
+        gsl_interp_accel_free(acc[i]);
     }
 }
 
@@ -449,12 +442,21 @@ void get_prediction_CLPT(double smin, double smax, int nbins, double out[],
     par[7] = in_alpha_per;
     par[8] = par[9] = par[10] = par[11] = par[12] = 0;
 
+    interpXi(par);
+    interpV12(par);
+    interpSigma12(par);
+
     for (unsigned int i = 0; i < nbins; i++) {
         double s = smin + i * ds + 0.5 * ds;
         multipole(s, par, out_tmp);
         out[i] = out_tmp[0];
         out[nbins + i] = 5 * out_tmp[1];
         out[2 * nbins + i] = 9 * out_tmp[2];
+    }
+
+    for (unsigned int i = 0; i < 4; i++) {
+        gsl_spline_free(spline[i]);
+        gsl_interp_accel_free(acc[i]);
     }
 }
 
@@ -473,12 +475,21 @@ void get_prediction_CLPT_allbias(double smin, double smax, int nbins, double out
     par[7] = in_alpha_per;
     par[8] = par[9] = par[10] = par[11] = par[12] = 0;
 
+    interpXi(par);
+    interpV12(par);
+    interpSigma12(par);
+
     for (unsigned int i = 0; i < nbins; i++) {
         const double s = smin + i * ds + 0.5 * ds;
         multipole(s, par, out_tmp);
         out[i] = out_tmp[0];
         out[nbins + i] = 5 * out_tmp[1];
         out[2 * nbins + i] = 9 * out_tmp[2];
+    }
+
+    for (unsigned int i = 0; i < 4; i++) {
+        gsl_spline_free(spline[i]);
+        gsl_interp_accel_free(acc[i]);
     }
 }
 
@@ -503,12 +514,21 @@ void get_prediction_CLEFT(double smin, double smax, int nbins, double out[],
 
     // clock_t begin = clock();
 
+    interpXi(par);
+    interpV12(par);
+    interpSigma12(par);
+
     for (unsigned int i = 0; i < nbins; i++) {
         const double s = smin + i * ds + 0.5 * ds;
         multipole(s, par, out_tmp);
         out[i] = out_tmp[0];
         out[nbins + i] = 5 * out_tmp[1];
         out[2 * nbins + i] = 9 * out_tmp[2];
+    }
+
+    for (unsigned int i = 0; i < 4; i++) {
+        gsl_spline_free(spline[i]);
+        gsl_interp_accel_free(acc[i]);
     }
 
     // clock_t end = clock();
