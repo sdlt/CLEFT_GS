@@ -1,8 +1,8 @@
 /* ============================================================ *
- * AUTHOR:      Sylvain de la Torre		                *
- * CONTRIBUTOR: Antoine Rocher, Michel-Andrès Breton 2020	*
- * 							        *
- * Code for computing Gaussian Streaming EFT		        *
+ * CONTRIBUTORS:    Antoine Rocher, Michel-Andrès Breton,       *
+ *                  Sylvain de la Torre, Martin Kärcher         *
+ * 							                                    *
+ * Code for computing Gaussian Streaming for ZA/CLPT/CLEFT      *
  * ============================================================ */
 
 #include <stdlib.h>
