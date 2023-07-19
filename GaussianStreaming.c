@@ -254,7 +254,7 @@ void fmultipole(double mu, double p[], double result[]) {
 }
 
 void multipole(double s, double p[], double result[]) {
-    const double par[5] = {s, p[0], p[5], p[6], p[7]};
+    double par[5] = {s, p[0], p[5], p[6], p[7]};
     Gauss_Legendre_Integration2_100pts_array(0, 1, &fmultipole, par, result, 3);
 }
 
