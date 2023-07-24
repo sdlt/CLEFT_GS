@@ -525,7 +525,7 @@ void get_prediction_CLEFT(double smin, double smax, int nbins, double out[],
     interpSigma12(par);
 
     for (unsigned int i = 0; i < nbins; i++) {
-        const double s = smin + i * ds + 0.5 * ds;
+        const double s = smin + i * ds;
         multipole(s, par, out_tmp);
         out[i] = out_tmp[0];
         out[nbins + i] = 5 * out_tmp[1];
