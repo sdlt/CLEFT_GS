@@ -397,9 +397,8 @@ void free_CLEFT(void) {
 /************************************************************************************************************************************************************************/
 /***********\\ Compute multipoles CLPT \\*****************************************************************************************************************************/
 
-void get_prediction_ZA(double smin, double smax, int nbins, double out[],
+void get_prediction_ZA(double *s_array, int nbins, double out[],
                        double in_f, double in_b1, double in_sigv, double in_alpha_par, double in_alpha_per) {
-    const double ds = (smax - smin) / (double)(nbins - 1);
     double out_tmp[3], par[13];
 
     par[0] = in_f;
@@ -417,8 +416,7 @@ void get_prediction_ZA(double smin, double smax, int nbins, double out[],
     interpSigma12(par);
 
     for (unsigned int i = 0; i < nbins; i++) {
-        double s = smin + i * ds;
-        multipole(s, par, out_tmp);
+        multipole(s_array[i], par, out_tmp);
         out[i] = out_tmp[0];
         out[nbins + i] = 5 * out_tmp[1];
         out[2 * nbins + i] = 9 * out_tmp[2];
@@ -431,9 +429,8 @@ void get_prediction_ZA(double smin, double smax, int nbins, double out[],
     free_CLEFT();
 }
 
-void get_prediction_CLPT(double smin, double smax, int nbins, double out[],
+void get_prediction_CLPT(double *s_array, int nbins, double out[],
                          double in_f, double in_b1, double in_b2, double in_sigv, double in_alpha_par, double in_alpha_per) {
-    const double ds = (smax - smin) / (double)(nbins - 1);
     double out_tmp[3], par[13];
 
     par[0] = in_f;
@@ -451,8 +448,7 @@ void get_prediction_CLPT(double smin, double smax, int nbins, double out[],
     interpSigma12(par);
 
     for (unsigned int i = 0; i < nbins; i++) {
-        double s = smin + i * ds;
-        multipole(s, par, out_tmp);
+        multipole(s_array[i], par, out_tmp);
         out[i] = out_tmp[0];
         out[nbins + i] = 5 * out_tmp[1];
         out[2 * nbins + i] = 9 * out_tmp[2];
@@ -465,9 +461,8 @@ void get_prediction_CLPT(double smin, double smax, int nbins, double out[],
     free_CLEFT();
 }
 
-void get_prediction_CLPT_allbias(double smin, double smax, int nbins, double out[],
+void get_prediction_CLPT_allbias(double *s_array, int nbins, double out[],
                                  double in_f, double in_b1, double in_b2, double in_b3, double in_b4, double in_sigv, double in_alpha_par, double in_alpha_per) {
-    const double ds = (smax - smin) / (double)(nbins - 1);
     double out_tmp[3], par[13];
 
     par[0] = in_f;
@@ -485,8 +480,7 @@ void get_prediction_CLPT_allbias(double smin, double smax, int nbins, double out
     interpSigma12(par);
 
     for (unsigned int i = 0; i < nbins; i++) {
-        const double s = smin + i * ds;
-        multipole(s, par, out_tmp);
+        multipole(s_array[i], par, out_tmp);
         out[i] = out_tmp[0];
         out[nbins + i] = 5 * out_tmp[1];
         out[2 * nbins + i] = 9 * out_tmp[2];
@@ -499,9 +493,8 @@ void get_prediction_CLPT_allbias(double smin, double smax, int nbins, double out
     free_CLEFT();
 }
 
-void get_prediction_CLEFT(double smin, double smax, int nbins, double out[],
+void get_prediction_CLEFT(double *s_array, int nbins, double out[],
                           double in_f, double in_b1, double in_b2, double in_bs, double in_ax, double in_av, double in_as, double in_alpha_par, double in_alpha_per) {
-    const double ds = (smax - smin) / (double)(nbins - 1);
     double par[13], out_tmp[3];
 
     par[0] = in_f;
@@ -525,8 +518,7 @@ void get_prediction_CLEFT(double smin, double smax, int nbins, double out[],
     interpSigma12(par);
 
     for (unsigned int i = 0; i < nbins; i++) {
-        const double s = smin + i * ds;
-        multipole(s, par, out_tmp);
+        multipole(s_array[i], par, out_tmp);
         out[i] = out_tmp[0];
         out[nbins + i] = 5 * out_tmp[1];
         out[2 * nbins + i] = 9 * out_tmp[2];
@@ -552,10 +544,17 @@ int main(int argc, char *argv[]) {
     load_CLEFT(argv[1]);
     printf("> CLEFT predictions read\n");
 
-    get_prediction_CLPT(0, 200, 40, out, 1.0, 0.1, 0.5, 5, 1, 1);
+    int ns = 40;
+    double smin = 0;
+    double smax = 200;
+    double ds = (smax - smin) / ns;
+    double s_array[ns];
+    for (int i = 0; i < ns; i++)
+        s_array[i] = smin + i * ds + 0.5 * ds;
+    get_prediction_CLPT(s_array, ns, out, 1.0, 0.1, 0.5, 5, 1, 1);
 
-    for (unsigned int i = 0; i < 40; i++)
-        printf("%le %le %le %le\n", i * 5 + 2.5, out[i], out[40 + i], out[80 + i]);
+    for (unsigned int i = 0; i < ns; i++)
+        printf("%le %le %le %le\n", s_array[i], out[i], out[ns + i], out[2 * ns + i]);
 
     return 0;
 }
