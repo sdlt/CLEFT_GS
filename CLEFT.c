@@ -2189,6 +2189,13 @@ void M_2(double y, double R, double M2_fin[]) {
                 F_par[6] += Xi;
                 F_per[6] += 3 * Xi;
             }
+        } else {
+            for (i = 0; i < 3; i++) {
+                for (j = 0; j < 3; j++) {
+                    F_par[0] += s[i][j] * rn[i] * rn[j];
+                    F_per[0] += s[i][j] * delta_K(i, j);
+                }
+            }
         }
         // Gaussian factor of j
         f = 0;
