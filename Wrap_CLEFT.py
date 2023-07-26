@@ -8,7 +8,7 @@ from numpy.ctypeslib import ndpointer
 
 # This is the same as numpy.ctypeslib.load_library
 # CLEFT_library = ctypes.CDLL("/home/mkarcher/CLEFT_GS/libCLEFT.so")
-dir_name = "/home/mabreton/CLEFT_GS/"
+dir_name = "/home/mkarcher/CLEFT_GS/"
 CLEFT_library = ctypes.CDLL(f"{dir_name}/libCLEFT.so")
 
 # Create/load the loading function
@@ -21,11 +21,40 @@ load_CLEFT_wrapped.argtypes = (
 )
 
 # Create/load the free and the prediction function
-model_wrapped = CLEFT_library.get_prediction_CLEFT
+model_ZA_wrapped = CLEFT_library.get_prediction_ZA
+model_CLPT_wrapped = CLEFT_library.get_prediction_CLPT
+model_CLEFT_wrapped = CLEFT_library.get_prediction_CLEFT
 
 # Specify the return and argument data types
-model_wrapped.restype = ctypes.c_void_p
-model_wrapped.argtypes = (
+model_ZA_wrapped.restype = ctypes.c_void_p
+model_ZA_wrapped.argtypes = (
+    ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
+    ctypes.c_int,
+    ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+)
+
+# Specify the return and argument data types
+model_CLPT_wrapped.restype = ctypes.c_void_p
+model_CLPT_wrapped.argtypes = (
+    ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
+    ctypes.c_int,
+    ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+)
+
+# Specify the return and argument data types
+model_CLEFT_wrapped.restype = ctypes.c_void_p
+model_CLEFT_wrapped.argtypes = (
     ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
     ctypes.c_int,
     ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
@@ -40,13 +69,28 @@ model_wrapped.argtypes = (
     ctypes.c_double,
 )
 
+# This is a new wrapper where we give directly a pointer to the numpy array of the ingredients
+def model_ZA(ingredients, theta, s_array, ns):
+    load_CLEFT_wrapped(ingredients, len(ingredients[:, 0]))
+    f, b1, sigv, alpha_par, alpha_per = theta
+    res = np.zeros(3 * ns, dtype=np.double)
+    model_ZA_wrapped(s_array, ns, res, f, b1, sigv, alpha_par, alpha_per)
+    return res
+
+# This is a new wrapper where we give directly a pointer to the numpy array of the ingredients
+def model_CLPT(ingredients, theta, s_array, ns):
+    load_CLEFT_wrapped(ingredients, len(ingredients[:, 0]))
+    f, b1, b2, sigv, alpha_par, alpha_per = theta
+    res = np.zeros(3 * ns, dtype=np.double)
+    model_CLPT_wrapped(s_array, ns, res, f, b1, b2, sigv, alpha_par, alpha_per)
+    return res
 
 # This is a new wrapper where we give directly a pointer to the numpy array of the ingredients
 def model_CLEFT(ingredients, theta, s_array, ns):
     load_CLEFT_wrapped(ingredients, len(ingredients[:, 0]))
     f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per = theta
     res = np.zeros(3 * ns, dtype=np.double)
-    model_wrapped(s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per)
+    model_CLEFT_wrapped(s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per)
     return res
 
 
@@ -56,32 +100,57 @@ def model_load_vanilla(filename, theta, s_array, ns):
     init(binput)
     f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per = theta
     res = np.zeros(3 * ns, dtype=np.double)
-    model_wrapped(s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per)
+    model_CLEFT_wrapped(s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per)
     return res
 
 
 def main():
+    test_ZA = np.loadtxt("Testing_Plin.dat.za")
+    test_CLPT = np.loadtxt("Testing_Plin.dat.clpt")
     test_CLEFT = np.loadtxt("Testing_Plin.dat.cleft")
 
-    # Some more or less reasonable parameter (just for testing if both loading methods give the same
     smin = 22.5
     smax = 197.5
     ns = 36
     r_bins = np.linspace(smin, smax, ns)
-    theta_test = [0.8, 1.5, 0.1, 0.1, 4, 3, 3, 1, 1]
-    result = model_CLEFT(test_CLEFT, theta_test, r_bins, ns)
+    # Some more or less reasonable parameter (just for testing if both loading methods give the same
+    theta_test_ZA = [0.8, 1.5, 2.5, 1, 1]
+    theta_test_CLPT = [0.8, 1.5, 0.1, 2.5, 1, 1]
+    theta_test_CLEFT = [0.8, 1.5, 0.1, 0.1, 40, 30, 30, 1, 1]
 
-    result_vanilla = model_load_vanilla("Testing_Plin.dat", theta_test, r_bins, ns)
+    result_ZA = model_ZA(test_CLEFT, theta_test_ZA, r_bins, ns)
+    result_CLPT = model_CLPT(test_CLEFT, theta_test_CLPT, r_bins, ns)
+    result_CLEFT = model_CLEFT(test_CLEFT, theta_test_CLEFT, r_bins, ns)
+
+    result_vanilla = model_load_vanilla("Testing_Plin.dat", theta_test_CLEFT, r_bins, ns)
 
     # This should be zero
-    print(f"{np.allclose(result, result_vanilla)=}")
+    print(f"{np.allclose(result_CLEFT, result_vanilla)=}")
 
-    plt.plot(r_bins, r_bins**2 * result[0:ns])
-    plt.plot(r_bins, r_bins**2 * result[ns : 2 * ns])
-    plt.plot(r_bins, r_bins**2 * result[2 * ns :])
-    plt.plot(r_bins, r_bins**2 * result_vanilla[0:ns], linestyle="--")
-    plt.plot(r_bins, r_bins**2 * result_vanilla[ns : 2 * ns], linestyle="--")
-    plt.plot(r_bins, r_bins**2 * result_vanilla[2 * ns :], linestyle="--")
+    fig, ax = plt.subplots(1,3)
+    fig.set_size_inches(13,4)
+
+    # plot ZA
+    ax[0].plot(r_bins, r_bins**2 * result_ZA[0:ns], label='ZA')
+    ax[1].plot(r_bins, r_bins**2 * result_ZA[ns : 2 * ns])
+    ax[2].plot(r_bins, r_bins**2 * result_ZA[2 * ns :])
+
+    # plot CLPT
+    ax[0].plot(r_bins, r_bins**2 * result_CLPT[0:ns], label='CLPT')
+    ax[1].plot(r_bins, r_bins**2 * result_CLPT[ns : 2 * ns])
+    ax[2].plot(r_bins, r_bins**2 * result_CLPT[2 * ns :])
+
+    # plot CLEFT
+    ax[0].plot(r_bins, r_bins**2 * result_CLEFT[0:ns], label='CLEFT')
+    ax[1].plot(r_bins, r_bins**2 * result_CLEFT[ns : 2 * ns])
+    ax[2].plot(r_bins, r_bins**2 * result_CLEFT[2 * ns :])
+    ax[0].plot(r_bins, r_bins**2 * result_vanilla[0:ns], linestyle="--")
+    ax[1].plot(r_bins, r_bins**2 * result_vanilla[ns : 2 * ns], linestyle="--")
+    ax[2].plot(r_bins, r_bins**2 * result_vanilla[2 * ns :], linestyle="--")
+
+
+    ax[0].legend()
+    plt.savefig("Test_2PCF.png", dpi=300)
     plt.show()
 
 
