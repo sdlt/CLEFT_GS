@@ -84,6 +84,8 @@ static const double A[] = {
 
 #define NUM_OF_POSITIVE_ZEROS sizeof(x) / sizeof(double)
 #define NUM_OF_ZEROS NUM_OF_POSITIVE_ZEROS + NUM_OF_POSITIVE_ZEROS
+struct my_f_params { double a; double b; double c; double d; double e;};
+struct my_f_params_small {double a; double b; double c; double d;};
 
 double Gauss_Legendre_Integration2_100pts(double a, double b, double (*f)(double, double[]), void *prms) {
     double integral = 0.0;
@@ -204,6 +206,49 @@ void interpSigma12(double *p) {
 
 /****************\\ Correlation function in z-space for CLPT prediction \\**********************************************************************************************/
 
+double fXis_cquad(double y, void * p) {
+
+    struct my_f_params_small *params = (struct my_f_params_small*)p;
+
+    const double rperp = (params->b);
+    const double fg = (params->c);
+    const double sigv = (params->d);
+
+
+    const double r = sqrt(rperp * rperp + y * y);
+    const double xi_r = Xi(r);
+    const double mu_r = y / r;
+    const double var = fg * fg * Sigma12(xi_r, mu_r, r) + sigv;
+    if (var <= 0)
+        return 0;
+    const double spara = (params->a);
+    const double v = fg * V12(r) / (1. + xi_r);
+    const double x = spara - y;
+    const double mean = mu_r * v;
+    return (1. + xi_r) * gauss(x, mean, var);
+}
+
+double Xis_cquad(double sperp, double spara, double p[]) {
+    double result;
+    double error;
+
+    gsl_function F;
+    struct my_f_params_small params = {spara, sperp, p[0], p[1]};
+
+    F.function = &fXis_cquad;
+
+    F.params = &params;
+
+    gsl_integration_cquad_workspace *w = gsl_integration_cquad_workspace_alloc(200);
+
+    gsl_integration_cquad(&F, spara - y_spanning, spara + y_spanning, 0, 1e-6, w, &result, &error, NULL);
+
+    gsl_integration_cquad_workspace_free(w);
+
+
+    return result - 1.;
+}
+
 double fXis(double y, double p[]) {
     const double rperp = p[1];
     const double fg = p[2];
@@ -235,8 +280,10 @@ double Xis(double sperp, double spara, double p[]) {
     return result - 1.;
 }
 
+
 /****************\\Legendre Multipole with CLPT prediction\\*********************************************************************************************************/
 
+// All multipoles with GL and with GL in streaming
 void fmultipole(double mu, double p[], double result[]) {
     const double s = p[0];
     const double apar = p[3];
@@ -256,6 +303,93 @@ void fmultipole(double mu, double p[], double result[]) {
 void multipole(double s, double p[], double result[]) {
     double par[5] = {s, p[0], p[5], p[6], p[7]};
     Gauss_Legendre_Integration2_100pts_array(0, 1, &fmultipole, par, result, 3);
+}
+
+// All multipoles in GL but with cquad in streaming
+void fmultipole_cquad(double mu, double p[], double result[]) {
+    const double s = p[0];
+    const double apar = p[3];
+    const double aper = p[4];
+    const double spara = apar * s * mu;
+    const double rperp = aper * s * sqrt(1. - mu * mu);
+    double par[2];
+    par[0] = p[1];
+    par[1] = p[2];
+    const double xi_s = Xis_cquad(rperp, spara, par);
+
+    result[0] = xi_s * gsl_sf_legendre_Pl(0, mu);
+    result[1] = xi_s * gsl_sf_legendre_Pl(2, mu);
+    result[2] = xi_s * gsl_sf_legendre_Pl(4, mu);
+}
+
+void multipole_cquad(double s, double p[], double result[]) {
+    double par[5] = {s, p[0], p[5], p[6], p[7]};
+    Gauss_Legendre_Integration2_100pts_array(0, 1, &fmultipole_cquad, par, result, 3);
+}
+
+// Only the first two multipoles with GL but with cquad in streaming
+void fmultipole_cquad_first_two(double mu, double p[], double result[]) {
+    const double s = p[0];
+    const double apar = p[3];
+    const double aper = p[4];
+    const double spara = apar * s * mu;
+    const double rperp = aper * s * sqrt(1. - mu * mu);
+    double par[2];
+    par[0] = p[1];
+    par[1] = p[2];
+    const double xi_s = Xis_cquad(rperp, spara, par);
+
+    result[0] = xi_s * gsl_sf_legendre_Pl(0, mu);
+    result[1] = xi_s * gsl_sf_legendre_Pl(2, mu);
+}
+
+// The hexadecapole with cquad in multipole and in streaming
+double fhexadecapole_cquad(double mu, void * p) {
+    struct my_f_params * params = (struct my_f_params *)p;
+    double par[2];
+    
+    double s = (params->a);
+    par[0] = (params->b);
+    par[1] = (params->c);
+    double aper = (params->d);
+    double apar = (params->e);
+
+    double spara = apar*s*mu;
+    double rperp = aper*s*sqrt(1.-mu*mu);
+    double xi_s = Xis_cquad(rperp, spara, par);
+
+    return xi_s*gsl_sf_legendre_Pl(4,mu);
+}
+
+// compute multipoles with GL for monopole and quadrupole but cquad for hexadecapole
+// Use cquad for streaming thoughout
+void multipole_only_hexa_cquad(double s, double p[], double result[]) {
+    double par[5];
+
+    par[0] = s;
+    par[1] = p[0];
+    par[2] = p[5];
+    par[3] = p[6];
+    par[4] = p[7];
+
+    double error_hexa;
+
+    // Do monopole and quadrupole with GL (but cquad in streaming)
+    Gauss_Legendre_Integration2_100pts_array(0, 1, &fmultipole_cquad_first_two, par, result, 2);
+
+    // Do hexadecapole with cquad in multipole and streaming
+    gsl_function F_hexa;
+    struct my_f_params params = {par[0], par[1], par[2], par[3], par[4]};
+
+    F_hexa.function = &fhexadecapole_cquad;
+
+    F_hexa.params = &params;
+
+    gsl_integration_cquad_workspace *hexadecap = gsl_integration_cquad_workspace_alloc(200);
+
+    gsl_integration_cquad(&F_hexa, 0, 1, 0, 1e-6, hexadecap, &result[2], &error_hexa, NULL);
+
+    gsl_integration_cquad_workspace_free(hexadecap);
 }
 
 /***********\\ Reading and interpolation \\*****************************************************************************************************************************/
@@ -518,7 +652,15 @@ void get_prediction_CLEFT(double *s_array, int nbins, double out[],
     interpSigma12(par);
 
     for (unsigned int i = 0; i < nbins; i++) {
-        multipole(s_array[i], par, out_tmp);
+        if (s_array[i] < 25){ // If below 25Mpc/h then use cquad for the hexadecapole but GL for the monopole/quadrupole and cquad for the streaming throughout
+            multipole_only_hexa_cquad(s_array[i], par, out_tmp);
+        }
+        else if (s_array[i] >= 25 && s_array[i] < 50){ // If in this range use GL for all multipoles but cquad for the streaming
+            multipole_cquad(s_array[i], par, out_tmp);
+        }
+        else{ // Use GL for streaming and multipoles
+            multipole(s_array[i], par, out_tmp);
+        }
         out[i] = out_tmp[0];
         out[nbins + i] = 5 * out_tmp[1];
         out[2 * nbins + i] = 9 * out_tmp[2];
