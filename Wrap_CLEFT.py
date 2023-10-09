@@ -23,6 +23,7 @@ load_CLEFT_wrapped.argtypes = (
 # Create/load the free and the prediction function
 model_ZA_wrapped = CLEFT_library.get_prediction_ZA
 model_CLPT_wrapped = CLEFT_library.get_prediction_CLPT
+model_CLPT_wrapped_only_xi_realspace = CLEFT_library.get_prediction_CLPT_only_xi_realspace
 model_CLEFT_wrapped = CLEFT_library.get_prediction_CLEFT
 
 # Specify the return and argument data types
@@ -35,7 +36,7 @@ model_ZA_wrapped.argtypes = (
     ctypes.c_double,
     ctypes.c_double,
     ctypes.c_double,
-    ctypes.c_double,
+    ctypes.c_double
 )
 
 # Specify the return and argument data types
@@ -49,8 +50,22 @@ model_CLPT_wrapped.argtypes = (
     ctypes.c_double,
     ctypes.c_double,
     ctypes.c_double,
+    ctypes.c_double
+)
+
+# Specify the return and argument data types for the xi-only CLPT model in realspace
+model_CLPT_wrapped_only_xi_realspace.restype = ctypes.c_void_p
+model_CLPT_wrapped_only_xi_realspace.argtypes = (
+    ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
+    ctypes.c_int,
+    ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
     ctypes.c_double,
 )
+
+
 
 # Specify the return and argument data types
 model_CLEFT_wrapped.restype = ctypes.c_void_p
@@ -66,7 +81,7 @@ model_CLEFT_wrapped.argtypes = (
     ctypes.c_double,
     ctypes.c_double,
     ctypes.c_double,
-    ctypes.c_double,
+    ctypes.c_double
 )
 
 # This is a new wrapper where we give directly a pointer to the numpy array of the ingredients
@@ -86,12 +101,21 @@ def model_CLPT(ingredients, theta, s_array, ns):
     return res
 
 # This is a new wrapper where we give directly a pointer to the numpy array of the ingredients
+def model_CLPT_only_xi_real(ingredients, theta, s_array, ns):
+    load_CLEFT_wrapped(ingredients, len(ingredients[:, 0]))
+    b1, b2, bs2, bn2 = theta
+    res = np.zeros(ns, dtype=np.double)
+    model_CLPT_wrapped_only_xi_realspace(s_array, ns, res, b1, b2, bs2, bn2)
+    return res
+
+# This is a new wrapper where we give directly a pointer to the numpy array of the ingredients
 def model_CLEFT(ingredients, theta, s_array, ns):
     load_CLEFT_wrapped(ingredients, len(ingredients[:, 0]))
     f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per = theta
     res = np.zeros(3 * ns, dtype=np.double)
     model_CLEFT_wrapped(s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per)
     return res
+
 
 
 # This is the vanilla wrapper where we give a filename and load the data from there

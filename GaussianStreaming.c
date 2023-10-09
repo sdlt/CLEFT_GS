@@ -497,6 +497,94 @@ void load_CLEFT(char *file) {
     nrs = n;
 }
 
+void load_CLPT(char *file) {
+    const unsigned int nc = 39;
+    char filename[strlen(file) + 1 + 7];
+    FILE *fi;
+
+    strcpy(filename, file);
+    strcat(filename, ".clpt");
+
+    const unsigned int n = GetNumLines(filename);
+    if (GetNumCols(filename) != nc) {
+        fprintf(stderr, "Error: unknown file format\n");
+        exit(1);
+    }
+
+    data = (double **)malloc(sizeof(double *) * nc);
+    for (unsigned int i = 0; i < nc; i++)
+        data[i] = (double *)malloc(sizeof(double) * n);
+
+    fi = fopen(filename, "r");
+    if (fi) {
+        int car;
+        fpos_t pos;
+
+        car = getc(fi);
+        while (car == '#') {
+            fscanf(fi, "%*[^\n]\n");
+            fgetpos(fi, &pos);
+            car = getc(fi);
+        }
+        fsetpos(fi, &pos);
+
+        for (unsigned int i = 0; i < n; i++)
+            for (unsigned int j = 0; j < nc; j++)
+                fscanf(fi, "%lf", &data[j][i]);
+    }
+    fclose(fi);
+
+    rmin = data[0][0];
+    rmax = data[0][n - 1];
+
+    nrs = n;
+}
+
+void load_ZA(char *file) {
+    const unsigned int nc = 39;
+    char filename[strlen(file) + 1 + 7];
+    FILE *fi;
+
+    strcpy(filename, file);
+    strcat(filename, ".za");
+
+    const unsigned int n = GetNumLines(filename);
+    if (GetNumCols(filename) != nc) {
+        fprintf(stderr, "Error: unknown file format\n");
+        exit(1);
+    }
+
+    data = (double **)malloc(sizeof(double *) * nc);
+    for (unsigned int i = 0; i < nc; i++)
+        data[i] = (double *)malloc(sizeof(double) * n);
+
+    fi = fopen(filename, "r");
+    if (fi) {
+        int car;
+        fpos_t pos;
+
+        car = getc(fi);
+        while (car == '#') {
+            fscanf(fi, "%*[^\n]\n");
+            fgetpos(fi, &pos);
+            car = getc(fi);
+        }
+        fsetpos(fi, &pos);
+
+        for (unsigned int i = 0; i < n; i++)
+            for (unsigned int j = 0; j < nc; j++)
+                fscanf(fi, "%lf", &data[j][i]);
+    }
+    fclose(fi);
+
+    rmin = data[0][0];
+    rmax = data[0][n - 1];
+
+    nrs = n;
+}
+
+
+
 // This is a wrappable loading function where we can give a pointer to a numpy ingredients file directly, rather than specifying a filename
 // I am assuming here that the ingredinets_file is stored by python as a C-contiguous array in memory (this can be checked once we write the wrapper
 // Also I am assuming that the first dimension of the array is the number of bins in r and then the second dimension is the number of ingredients (in this case 39)
@@ -602,6 +690,7 @@ void get_prediction_ZA_tmp_fitting(double *s_array, int nbins, double out[],
         out[i] = out_tmp[0];
         out[nbins + i] = 5 * out_tmp[1];
         out[2 * nbins + i] = 9 * out_tmp[2];
+
     }
 
     for (unsigned int i = 0; i < 4; i++) {
@@ -691,45 +780,33 @@ void get_prediction_CLPT_tmp_fitting(double *s_array, int nbins, double out[],
     }
 }
 
-void get_prediction_CLPT_allbias(double *s_array, int nbins, double out[],
-                                 double in_f, double in_b1, double in_b2, double in_b3, double in_b4, double in_sigv, double in_alpha_par, double in_alpha_per) {
-    double out_tmp[3], par[13];
+void get_prediction_CLPT_only_xi_realspace(double *s_array, int nbins, double out[], double in_b1, double in_b2, double in_bs2, double in_bn2) {
+    double par[13];
 
-    par[0] = in_f;
+    par[0] = 0;
     par[1] = in_b1;
     par[2] = in_b2;
-    par[3] = in_b3;
-    par[4] = in_b4;
-    par[5] = in_sigv;
-    par[6] = in_alpha_par;
-    par[7] = in_alpha_per;
+    par[3] = in_bs2; // This is most likely b_s2
+    par[4] = in_bn2; // This is most likely b_nabla2
+    par[5] = 0;
+    par[6] = 0;
+    par[7] = 0;
     par[8] = par[9] = par[10] = par[11] = par[12] = 0;
 
     interpXi(par);
-    interpV12(par);
-    interpSigma12(par);
 
     for (unsigned int i = 0; i < nbins; i++) {
-        if (s_array[i] < 25){ // If below 25Mpc/h then use cquad for the hexadecapole but GL for the monopole/quadrupole and cquad for the streaming throughout
-            multipole_only_hexa_cquad(s_array[i], par, out_tmp);
-        }
-        else if (s_array[i] >= 25 && s_array[i] < 50){ // If in this range use GL for all multipoles but cquad for the streaming
-            multipole_cquad(s_array[i], par, out_tmp);
-        }
-        else{ // Use GL for streaming and multipoles
-            multipole(s_array[i], par, out_tmp);
-        }
-        out[i] = out_tmp[0];
-        out[nbins + i] = 5 * out_tmp[1];
-        out[2 * nbins + i] = 9 * out_tmp[2];
+        out[i] = Xi(s_array[i]);
     }
 
-    for (unsigned int i = 0; i < 4; i++) {
-        gsl_spline_free(spline[i]);
-        gsl_interp_accel_free(acc[i]);
-    }
+    // Now we only have to free the spline from xi
+    gsl_spline_free(spline[0]);
+    gsl_interp_accel_free(acc[0]);
+
+
     free_CLEFT();
 }
+
 
 void get_prediction_CLEFT(double *s_array, int nbins, double out[],
                           double in_f, double in_b1, double in_b2, double in_bs, double in_ax, double in_av, double in_as, double in_alpha_par, double in_alpha_per) {
