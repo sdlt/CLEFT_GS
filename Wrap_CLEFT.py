@@ -60,9 +60,7 @@ model_CLPT_wrapped_only_xi_realspace.argtypes = (
     ctypes.c_int,
     ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
     ctypes.c_double,
-    ctypes.c_double,
-    ctypes.c_double,
-    ctypes.c_double,
+    ctypes.c_double
 )
 
 
@@ -103,9 +101,9 @@ def model_CLPT(ingredients, theta, s_array, ns):
 # This is a new wrapper where we give directly a pointer to the numpy array of the ingredients
 def model_CLPT_only_xi_real(ingredients, theta, s_array, ns):
     load_CLEFT_wrapped(ingredients, len(ingredients[:, 0]))
-    b1, b2, bs2, bn2 = theta
+    b1, b2 = theta
     res = np.zeros(ns, dtype=np.double)
-    model_CLPT_wrapped_only_xi_realspace(s_array, ns, res, b1, b2, bs2, bn2)
+    model_CLPT_wrapped_only_xi_realspace(s_array, ns, res, b1, b2)
     return res
 
 # This is a new wrapper where we give directly a pointer to the numpy array of the ingredients

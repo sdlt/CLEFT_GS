@@ -780,14 +780,14 @@ void get_prediction_CLPT_tmp_fitting(double *s_array, int nbins, double out[],
     }
 }
 
-void get_prediction_CLPT_only_xi_realspace(double *s_array, int nbins, double out[], double in_b1, double in_b2, double in_bs2, double in_bn2) {
+void get_prediction_CLPT_only_xi_realspace(double *s_array, int nbins, double out[], double in_b1, double in_b2) {
     double par[13];
 
     par[0] = 0;
     par[1] = in_b1;
     par[2] = in_b2;
-    par[3] = in_bs2; // This is most likely b_s2
-    par[4] = in_bn2; // This is most likely b_nabla2
+    par[3] = 0; // This is most likely b_s2
+    par[4] = 0; // This is most likely b_nabla2
     par[5] = 0;
     par[6] = 0;
     par[7] = 0;
