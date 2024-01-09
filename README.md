@@ -35,7 +35,7 @@ can be used externally in other C codes or wrappers.
 
 To compute real-space quantities, use
 
-> ./CLEFT power*spectrum_file \_NUM*
+> ./CLEFT power_spectrum_file NUM
 
 where NUM is equal to 0, 1 or 2 (for ZA, CLPT or CLEFT respectively). If NUM is not specified, falls back to CLEFT.
 
@@ -63,4 +63,4 @@ In template fitting the ingredients stay the same for each MCMC step and only bi
 
 ## Contact
 
-For any question, please send an email to sylvain.delatorre@lam.fr, breton@ice.csic.es or martin.karcher@lam.fr
+For any question, please send an email to sylvain.delatorre@lam.fr, michel-andres.breton@obspm.fr or martin.karcher@lam.fr
