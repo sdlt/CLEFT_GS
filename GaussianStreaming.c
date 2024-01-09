@@ -282,7 +282,32 @@ double Xis(double sperp, double spara, double p[]) {
 
 
 /****************\\Legendre Multipole with CLPT prediction\\*********************************************************************************************************/
+// All multipoles with GL and with GL in streaming this will compute also the l=6 and l=8 multipole
+// Specific to function get_prediction_CLEFT_upto8 only
+void fmultipole_upto8(double mu, double p[], double result[]) {
+    const double s = p[0];
+    const double apar = p[3];
+    const double aper = p[4];
+    const double spara = apar * s * mu;
+    const double rperp = aper * s * sqrt(1. - mu * mu);
+    double par[2];
+    par[0] = p[1];
+    par[1] = p[2];
+    const double xi_s = Xis(rperp, spara, par);
 
+    result[0] = xi_s * gsl_sf_legendre_Pl(0, mu);
+    result[1] = xi_s * gsl_sf_legendre_Pl(2, mu);
+    result[2] = xi_s * gsl_sf_legendre_Pl(4, mu);
+    result[3] = xi_s * gsl_sf_legendre_Pl(6, mu);
+    result[4] = xi_s * gsl_sf_legendre_Pl(8, mu);
+}
+// Specific to function get_prediction_CLEFT_upto8 only
+void multipole_upto8(double s, double p[], double result[]) {
+    double par[5] = {s, p[0], p[5], p[6], p[7]};
+    Gauss_Legendre_Integration2_100pts_array(0, 1, &fmultipole_upto8, par, result, 5);
+}
+
+// Multipoles with GL and Gaussian streaming with GL (fastest but least precise method
 // All multipoles with GL and with GL in streaming
 void fmultipole(double mu, double p[], double result[]) {
     const double s = p[0];
@@ -305,6 +330,7 @@ void multipole(double s, double p[], double result[]) {
     Gauss_Legendre_Integration2_100pts_array(0, 1, &fmultipole, par, result, 3);
 }
 
+// Multipole integration with GL but Gaussian streaming is computed via cquad
 // All multipoles in GL but with cquad in streaming
 void fmultipole_cquad(double mu, double p[], double result[]) {
     const double s = p[0];
@@ -327,6 +353,9 @@ void multipole_cquad(double s, double p[], double result[]) {
     Gauss_Legendre_Integration2_100pts_array(0, 1, &fmultipole_cquad, par, result, 3);
 }
 
+// Hybrid method GL for monopole and quadrupole but cquad for hexadecapole
+// Gaussian streaming is cquad for all three multipoles 
+// This option should only be used for the lowest scales as it is very time consuming (nested cquad)
 // Only the first two multipoles with GL but with cquad in streaming
 void fmultipole_cquad_first_two(double mu, double p[], double result[]) {
     const double s = p[0];
@@ -586,7 +615,7 @@ void load_ZA(char *file) {
 
 
 // This is a wrappable loading function where we can give a pointer to a numpy ingredients file directly, rather than specifying a filename
-// I am assuming here that the ingredinets_file is stored by python as a C-contiguous array in memory (this can be checked once we write the wrapper
+// I am assuming here that the ingredinets_file is stored by python as a C-contiguous array in memory (this will be checked in the python wrapper)
 // Also I am assuming that the first dimension of the array is the number of bins in r and then the second dimension is the number of ingredients (in this case 39)
 void load_CLEFT_wrappable(double *data_in, const unsigned int nrows) {
     // Ok so we just hardcode the number of ingredients to be 39 as we won't change that
@@ -659,6 +688,9 @@ void get_prediction_ZA(double *s_array, int nbins, double out[],
     free_CLEFT();
 }
 
+// The appropriate function to use for template fitting as it doesn't free the ingredients after the computation of the multipoles
+// (For template fitting the ingredients get once computed for one cosmology and then stay the same as only AP and f are varied 
+// as cosmological parameters)
 void get_prediction_ZA_tmp_fitting(double *s_array, int nbins, double out[],
                        double in_f, double in_b1, double in_sigv, double in_alpha_par, double in_alpha_per) {
     double out_tmp[3], par[13];
@@ -741,6 +773,9 @@ void get_prediction_CLPT(double *s_array, int nbins, double out[],
     free_CLEFT();
 }
 
+// The appropriate function to use for template fitting as it doesn't free the ingredients after the computation of the multipoles
+// (For template fitting the ingredients get once computed for one cosmology and then stay the same as only AP and f are varied 
+// as cosmological parameters)
 void get_prediction_CLPT_tmp_fitting(double *s_array, int nbins, double out[],
                          double in_f, double in_b1, double in_b2, double in_sigv, double in_alpha_par, double in_alpha_per) {
     double out_tmp[3], par[13];
@@ -780,6 +815,7 @@ void get_prediction_CLPT_tmp_fitting(double *s_array, int nbins, double out[],
     }
 }
 
+// A function to predict only the real space xi, hence no Gaussian streaming or multipoles computation
 void get_prediction_CLPT_only_xi_realspace(double *s_array, int nbins, double out[], double in_b1, double in_b2) {
     double par[13];
 
@@ -808,6 +844,7 @@ void get_prediction_CLPT_only_xi_realspace(double *s_array, int nbins, double ou
 }
 
 
+// The full CLEFT model with 3 bias parameters, 3 counter terms, growth rate f and 2 AP parameters
 void get_prediction_CLEFT(double *s_array, int nbins, double out[],
                           double in_f, double in_b1, double in_b2, double in_bs, double in_ax, double in_av, double in_as, double in_alpha_par, double in_alpha_per) {
     double par[13], out_tmp[3];
@@ -855,6 +892,52 @@ void get_prediction_CLEFT(double *s_array, int nbins, double out[],
     free_CLEFT();
 }
 
+
+// A function to compute multipoles up to l=8, hence the output will contain l=0, l=2, l=4, l=6 and l=8
+// Can only be used in a full-fit because the ingredients array gets freed directly
+void get_prediction_CLEFT_upto8(double *s_array, int nbins, double out[],
+                          double in_f, double in_b1, double in_b2, double in_bs, double in_ax, double in_av, double in_as, double in_alpha_par, double in_alpha_per) {
+    double par[13], out_tmp[5];
+
+    par[0] = in_f;
+    par[1] = in_b1;
+    par[2] = in_b2;
+    par[3] = in_bs;
+    par[4] = 0;
+    par[5] = 0;
+    par[6] = in_alpha_par;
+    par[7] = in_alpha_per;
+    par[8] = in_ax;
+    par[9] = in_av;
+    par[10] = 0;
+    par[11] = in_as;
+    par[12] = 0;
+
+    interpXi(par);
+    interpV12(par);
+    interpSigma12(par);
+
+    for (unsigned int i = 0; i < nbins; i++) {
+        multipole_upto8(s_array[i], par, out_tmp);
+
+        out[i] = out_tmp[0];
+        out[nbins + i] = 5 * out_tmp[1];
+        out[2 * nbins + i] = 9 * out_tmp[2];
+        out[3 * nbins + i] = 13 * out_tmp[3];
+        out[4 * nbins + i] = 17 * out_tmp[4];
+    }
+
+    for (unsigned int i = 0; i < 4; i++) {
+        gsl_spline_free(spline[i]);
+        gsl_interp_accel_free(acc[i]);
+    }
+
+    free_CLEFT();
+}
+
+// The appropriate function to use for template fitting as it doesn't free the ingredients after the computation of the multipoles
+// (For template fitting the ingredients get once computed for one cosmology and then stay the same as only AP and f are varied 
+// as cosmological parameters)
 void get_prediction_CLEFT_tmp_fitting(double *s_array, int nbins, double out[],
                           double in_f, double in_b1, double in_b2, double in_bs, double in_ax, double in_av, double in_as, double in_alpha_par, double in_alpha_per) {
     double par[13], out_tmp[3];

@@ -32,21 +32,16 @@ and hexadecapole of the correlation function, and `libCLEFT.so` is a library tha
 can be used externally in other C codes or wrappers.
 
 ## Python wrapper
+### Full-shape fitting
+The code `Wrap_CLEFT.py` provides wrapper for the ZA, CLPT and CLEFT model to be used for full-shape fits. In case template fitting those functions are not optimal as they free the ingredients after computing the multipoles once. The wrappers to be used for full-shape fitting are
 
-The model can be used as a python module calling the `libCLEFT` library. The CLEFT
-python module needs first to be built with `cffi`. For this:
+`model_ZA` fit-parameters: f, b_1, s_v, alpha_par, alpha_perp<br>
+`model_CLPT` fit-parameters: f, b_1, b_2, s_v, alpha_par, alpha_perp<br>
+`model_CLEFT` fit-parameters: f, b_1, b_2, b_s, a_xi, a_v, a_sigma, alpha_par, alpha_perp<br>
 
-> cd pymodule
-
-> python build.py
-
-The wrapper class is in `wrapperCLEFT.py` and can be tested by running:
-
-> python wrapperCLEFT.py
-
-For the python wrapper to work in other python scripts, `libCLEFT.so` and
-`pyCLEFT.cpython-*.so` files need to be put in the same directory.
+They all take an ingredints file first, then an array of fit-parameters (see above), followed by the array of bins in s and the number of bins ns.
+### Template fitting
+In template fitting the ingredients stay the same for each MCMC step and only bias and nuisance parameters are varied as well as the growth rate f and AP parameters containing cosmological information. For this case, you can use the dedicated wrapper ending with `_templatefit`. Before the MCMC chain starts you need to initialize the code with an ingredients file once using `load_templatefit`. Inside the MCMC chain you can use `model_*_templatefit` and after the chain has ended you need to call `free_templatefit`.
 
 ## Contact
-
-For any question, please send an email to sylvain.delatorre@lam.fr.
+For any question, please send an email to sylvain.delatorre@lam.fr, breton@ice.csic.es or martin.karcher@lam.fr

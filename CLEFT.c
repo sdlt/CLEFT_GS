@@ -38,7 +38,7 @@ const unsigned int nbins_M2 = 2000; // Integration step for M2 function
 double kmin, kmax;                  // min/max k in the power spectrum file used for interpolations
 double kmin_integ, kmax_integ;      // min/max k in the power spectrum used for integrations
 double q_v[3];                      // unit vector q_i, q_j, q_k
-double EPS = 1e-8;                  // Precision buffer to avoid numerical aterfacts
+double EPS = 1e-8;                  // Precision buffer to avoid numerical artifacts
 
 struct my_f_params2 {
     double a;
