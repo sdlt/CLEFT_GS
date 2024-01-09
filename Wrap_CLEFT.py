@@ -27,6 +27,7 @@ model_CLPT_wrapped = CLEFT_library.get_prediction_CLPT
 model_CLPT_wrapped_templatefit = CLEFT_library.get_prediction_CLPT_tmp_fitting
 model_CLPT_wrapped_only_xi_realspace = CLEFT_library.get_prediction_CLPT_only_xi_realspace
 model_CLEFT_wrapped = CLEFT_library.get_prediction_CLEFT
+model_CLEFT_wrapped_cumulant = CLEFT_library.get_prediction_CLEFT_cumulant
 model_CLEFT_wrapped_templatefit = CLEFT_library.get_prediction_CLEFT_tmp_fitting
 model_CLEFT_wrapped_upto8 = CLEFT_library.get_prediction_CLEFT_upto8
 
@@ -123,6 +124,24 @@ model_CLEFT_wrapped.argtypes = (
     ctypes.c_double
 )
 
+# CLEFT cumulant version
+# Specify the return and argument data types
+model_CLEFT_wrapped_cumulant.restype = ctypes.c_void_p
+model_CLEFT_wrapped_cumulant.argtypes = (
+    ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
+    ctypes.c_int,
+    ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double
+)
+
 # CLEFT for template fitting
 # Specify the return and argument data types
 model_CLEFT_wrapped_templatefit.restype = ctypes.c_void_p
@@ -196,6 +215,17 @@ def model_CLEFT(ingredients, theta, s_array, ns):
     model_CLEFT_wrapped(s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per)
     return res
 
+# Wrapper for CLEFT using cumulant version for sigma
+# This is a new wrapper where we give directly a pointer to the numpy array of the ingredients
+# NOT YET TESTED, USE WITH CARE!
+def model_CLEFT_cumulant(ingredients, theta, s_array, ns):
+    load_CLEFT_wrapped(ingredients, len(ingredients[:, 0]))
+    f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per = theta
+    res = np.zeros(3 * ns, dtype=np.double)
+    model_CLEFT_wrapped_cumulant(s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per)
+    return res
+
+
 
 # Wrapper for CLEFT/CLPT/ to be used for template fitting
 def load_templatefit(ingredients):
@@ -261,6 +291,7 @@ def main():
     result_ZA = model_ZA(test_ZA, theta_test_ZA, r_bins, ns)
     result_CLPT = model_CLPT(test_CLPT, theta_test_CLPT, r_bins, ns)
     result_CLEFT = model_CLEFT(test_CLEFT, theta_test_CLEFT, r_bins, ns)
+    result_CLEFT_cumulant = model_CLEFT_cumulant(test_CLEFT, theta_test_CLEFT, r_bins, ns)
 
     # Test the template fitting
     load_templatefit(test_ZA)
@@ -300,6 +331,9 @@ def main():
     ax[0].plot(r_bins, r_bins**2 * result_CLEFT[0:ns], label='CLEFT')
     ax[1].plot(r_bins, r_bins**2 * result_CLEFT[ns : 2 * ns])
     ax[2].plot(r_bins, r_bins**2 * result_CLEFT[2 * ns :])
+    ax[0].plot(r_bins, r_bins**2 * result_CLEFT_cumulant[0:ns], label='CLEFT cumulant')
+    ax[1].plot(r_bins, r_bins**2 * result_CLEFT_cumulant[ns : 2 * ns])
+    ax[2].plot(r_bins, r_bins**2 * result_CLEFT_cumulant[2 * ns :])
     ax[0].plot(r_bins, r_bins**2 * result_reference[0:ns], linestyle="--", label='CLEFT sanity check')
     ax[1].plot(r_bins, r_bins**2 * result_reference[ns : 2 * ns], linestyle="--")
     ax[2].plot(r_bins, r_bins**2 * result_reference[2 * ns :], linestyle="--")
@@ -307,6 +341,7 @@ def main():
     ax[0].set_ylabel(r'Monopole $\xi_0$')
     ax[1].set_ylabel(r'Quadrupole $\xi_2$')
     ax[2].set_ylabel(r'Hexdecapole $\xi_4$')
+
 
     for i in range(3):
         ax[i].set_xlabel('r [Mpc/h]')
