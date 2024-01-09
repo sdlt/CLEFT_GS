@@ -35,11 +35,11 @@ can be used externally in other C codes or wrappers.
 ### Full-shape fitting
 The code `Wrap_CLEFT.py` provides wrapper for the ZA, CLPT and CLEFT model to be used for full-shape fits. In case template fitting those functions are not optimal as they free the ingredients after computing the multipoles once. The wrappers to be used for full-shape fitting are
 
-> `model_ZA` fit-params: f, b_1, s_v, alpha_par, alpha_perp<br>
+> `model_ZA` fit-params: [f, b_1, s_v, alpha_par, alpha_perp]<br>
 
-> `model_CLPT` fit-params: f, b_1, b_2, s_v, alpha_par, alpha_perp<br>
+> `model_CLPT` fit-params: [f, b_1, b_2, s_v, alpha_par, alpha_perp]<br>
 
-> `model_CLEFT` fit-params: f, b_1, b_2, b_s, a_xi, a_v, a_sigma, alpha_par, alpha_perp<br>
+> `model_CLEFT` fit-params: [f, b_1, b_2, b_s, a_xi, a_v, a_sigma, alpha_par, alpha_perp]<br>
 
 They all take an ingredients file first, then an array of fit-parameters (see above), followed by the array of bins in *s* and the number of bins *ns*.
 ### Template fitting
