@@ -31,9 +31,23 @@ The `GS` and `CLEFT` executables can be ran from the command line.
 and hexadecapole of the correlation function, and `libCLEFT.so` is a library that
 can be used externally in other C codes or wrappers.
 
+## Running the code
+
+To compute real-space quantities, use
+
+> ./CLEFT power*spectrum_file \_NUM*
+
+where NUM is equal to 0, 1 or 2 (for ZA, CLPT or CLEFT respectively). If NUM is not specified, falls back to CLEFT.
+
+The ingredient file is written as `power_spectrum_file.cleft` (or .za, or .clpt).
+
 ## Python wrapper
+
+The easiest way to compute the 2PCF multipoles is to use a Python wrapper.
+
 ### Full-shape fitting
-The code `Wrap_CLEFT.py` provides wrapper for the ZA, CLPT and CLEFT model to be used for full-shape fits. In case template fitting those functions are not optimal as they free the ingredients after computing the multipoles once. The wrappers to be used for full-shape fitting are
+
+The code `pymodule/wrapperCLEFT.py` provides wrapper for the ZA, CLPT and CLEFT model to be used for full-shape fits. In case template fitting those functions are not optimal as they free the ingredients after computing the multipoles once. The wrappers to be used for full-shape fitting are
 
 > `model_ZA` fit-params: [f, b_1, s_v, alpha_par, alpha_perp]<br>
 
@@ -41,9 +55,12 @@ The code `Wrap_CLEFT.py` provides wrapper for the ZA, CLPT and CLEFT model to be
 
 > `model_CLEFT` fit-params: [f, b_1, b_2, b_s, a_xi, a_v, a_sigma, alpha_par, alpha_perp]<br>
 
-They all take an ingredients file first, then an array of fit-parameters (see above), followed by the array of bins in *s* and the number of bins *ns*.
+They all take an ingredients file first, then an array of fit-parameters (see above), followed by the array of bins in _s_ and the number of bins _ns_.
+
 ### Template fitting
+
 In template fitting the ingredients stay the same for each MCMC step and only bias and nuisance parameters are varied as well as the growth rate f and AP parameters containing cosmological information. For this case, you can use the dedicated wrapper ending with `_templatefit`. Before the MCMC chain starts you need to initialize the code with an ingredients file once using `load_templatefit`. Inside the MCMC chain you can use `model_*_templatefit` and after the chain has ended you need to call `free_templatefit`.
 
 ## Contact
+
 For any question, please send an email to sylvain.delatorre@lam.fr, breton@ice.csic.es or martin.karcher@lam.fr
