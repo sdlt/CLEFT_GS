@@ -378,7 +378,7 @@ double Xis_cumulant(double sperp, double spara, double p[]) {
 /****************\\Legendre Multipole with CLPT prediction\\*********************************************************************************************************/
 // All multipoles with GL and with GL in streaming this will compute also the l=6 and l=8 multipole
 // Specific to function get_prediction_CLEFT_upto8 only
-void fmultipole_upto8(double mu, double p[], double result[]) {
+void fmultipole_upto8_cumulant(double mu, double p[], double result[]) {
     const double s = p[0];
     const double apar = p[3];
     const double aper = p[4];
@@ -387,7 +387,7 @@ void fmultipole_upto8(double mu, double p[], double result[]) {
     double par[2];
     par[0] = p[1];
     par[1] = p[2];
-    const double xi_s = Xis(rperp, spara, par);
+    const double xi_s = Xis_cumulant(rperp, spara, par);
 
     result[0] = xi_s * gsl_sf_legendre_Pl(0, mu);
     result[1] = xi_s * gsl_sf_legendre_Pl(2, mu);
@@ -395,10 +395,10 @@ void fmultipole_upto8(double mu, double p[], double result[]) {
     result[3] = xi_s * gsl_sf_legendre_Pl(6, mu);
     result[4] = xi_s * gsl_sf_legendre_Pl(8, mu);
 }
-// Specific to function get_prediction_CLEFT_upto8 only
-void multipole_upto8(double s, double p[], double result[]) {
+// Specific to function get_prediction_CLEFT_cumulant_upto8 only
+void multipole_upto8_cumulant(double s, double p[], double result[]) {
     double par[5] = {s, p[0], p[5], p[6], p[7]};
-    Gauss_Legendre_Integration2_100pts_array(0, 1, &fmultipole_upto8, par, result, 5);
+    Gauss_Legendre_Integration2_100pts_array(0, 1, &fmultipole_upto8_cumulant, par, result, 5);
 }
 
 // Multipoles with GL and Gaussian streaming with GL (fastest but least precise method
@@ -1050,8 +1050,9 @@ void get_prediction_CLPT_only_xi_realspace(double *s_array, int nbins, double ou
 }
 
 
+// Deprecated use the cumulant version instead
 // The full CLEFT model with 3 bias parameters, 3 counter terms, growth rate f and 2 AP parameters
-void get_prediction_CLEFT(double *s_array, int nbins, double out[],
+/*void get_prediction_CLEFT(double *s_array, int nbins, double out[],
                           double in_f, double in_b1, double in_b2, double in_bs, double in_ax, double in_av, double in_as, double in_alpha_par, double in_alpha_per) {
     double par[13], out_tmp[3];
 
@@ -1097,6 +1098,7 @@ void get_prediction_CLEFT(double *s_array, int nbins, double out[],
 
     free_CLEFT();
 }
+*/
 
 // The same CLEFT as above but using the cumulant for sigma
 void get_prediction_CLEFT_cumulant(double *s_array, int nbins, double out[],
@@ -1151,7 +1153,7 @@ void get_prediction_CLEFT_cumulant(double *s_array, int nbins, double out[],
 
 // A function to compute multipoles up to l=8, hence the output will contain l=0, l=2, l=4, l=6 and l=8
 // Can only be used in a full-fit because the ingredients array gets freed directly
-void get_prediction_CLEFT_upto8(double *s_array, int nbins, double out[],
+void get_prediction_CLEFT_cumulant_upto8(double *s_array, int nbins, double out[],
                           double in_f, double in_b1, double in_b2, double in_bs, double in_ax, double in_av, double in_as, double in_alpha_par, double in_alpha_per) {
     double par[13], out_tmp[5];
 
@@ -1174,7 +1176,7 @@ void get_prediction_CLEFT_upto8(double *s_array, int nbins, double out[],
     interpSigma12(par);
 
     for (unsigned int i = 0; i < nbins; i++) {
-        multipole_upto8(s_array[i], par, out_tmp);
+        multipole_upto8_cumulant(s_array[i], par, out_tmp);
 
         out[i] = out_tmp[0];
         out[nbins + i] = 5 * out_tmp[1];
@@ -1194,7 +1196,7 @@ void get_prediction_CLEFT_upto8(double *s_array, int nbins, double out[],
 // The appropriate function to use for template fitting as it doesn't free the ingredients after the computation of the multipoles
 // (For template fitting the ingredients get once computed for one cosmology and then stay the same as only AP and f are varied 
 // as cosmological parameters)
-void get_prediction_CLEFT_tmp_fitting(double *s_array, int nbins, double out[],
+void get_prediction_CLEFT_cumulant_tmp_fitting(double *s_array, int nbins, double out[],
                           double in_f, double in_b1, double in_b2, double in_bs, double in_ax, double in_av, double in_as, double in_alpha_par, double in_alpha_per) {
     double par[13], out_tmp[3];
 
@@ -1218,13 +1220,13 @@ void get_prediction_CLEFT_tmp_fitting(double *s_array, int nbins, double out[],
 
     for (unsigned int i = 0; i < nbins; i++) {
         if (s_array[i] < 25){ // If below 25Mpc/h then use cquad for the hexadecapole but GL for the monopole/quadrupole and cquad for the streaming throughout
-            multipole_only_hexa_cquad(s_array[i], par, out_tmp);
+            multipole_only_hexa_cquad_cumulant(s_array[i], par, out_tmp);
         }
         else if (s_array[i] >= 25 && s_array[i] < 50){ // If in this range use GL for all multipoles but cquad for the streaming
-            multipole_cquad(s_array[i], par, out_tmp);
+            multipole_cquad_cumulant(s_array[i], par, out_tmp);
         }
         else{ // Use GL for streaming and multipoles
-            multipole(s_array[i], par, out_tmp);
+            multipole_cumulant(s_array[i], par, out_tmp);
         }
         out[i] = out_tmp[0];
         out[nbins + i] = 5 * out_tmp[1];

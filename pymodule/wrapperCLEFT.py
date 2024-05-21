@@ -7,7 +7,7 @@ import numpy as np
 from numpy.ctypeslib import ndpointer
 
 # This is the same as numpy.ctypeslib.load_library
-dir_name = "/home/mabreton/CLEFT_GS/"
+dir_name = "/home/mkarcher/CLEFT_GS"
 CLEFT_library = ctypes.CDLL(f"{dir_name}/libCLEFT.so")
 
 # Create/load the loading function
@@ -27,10 +27,10 @@ model_CLPT_wrapped_templatefit = CLEFT_library.get_prediction_CLPT_tmp_fitting
 model_CLPT_wrapped_only_xi_realspace = (
     CLEFT_library.get_prediction_CLPT_only_xi_realspace
 )
-model_CLEFT_wrapped = CLEFT_library.get_prediction_CLEFT
+
 model_CLEFT_wrapped_cumulant = CLEFT_library.get_prediction_CLEFT_cumulant
-model_CLEFT_wrapped_templatefit = CLEFT_library.get_prediction_CLEFT_tmp_fitting
-model_CLEFT_wrapped_upto8 = CLEFT_library.get_prediction_CLEFT_upto8
+model_CLEFT_wrapped_cumulant_templatefit = CLEFT_library.get_prediction_CLEFT_cumulant_tmp_fitting
+model_CLEFT_wrapped_cumulant_upto8 = CLEFT_library.get_prediction_CLEFT_cumulant_upto8
 
 # Create/load the free function (only needed for template fitting)
 free_wrapped_templatefit = CLEFT_library.free_CLEFT
@@ -95,7 +95,6 @@ model_CLPT_wrapped_templatefit.argtypes = (
     ctypes.c_double,
 )
 
-
 # CLPT real space
 # Specify the return and argument data types for the xi-only CLPT model in realspace
 model_CLPT_wrapped_only_xi_realspace.restype = ctypes.c_void_p
@@ -103,24 +102,6 @@ model_CLPT_wrapped_only_xi_realspace.argtypes = (
     ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
     ctypes.c_int,
     ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
-    ctypes.c_double,
-    ctypes.c_double,
-)
-
-# CLEFT
-# Specify the return and argument data types
-model_CLEFT_wrapped.restype = ctypes.c_void_p
-model_CLEFT_wrapped.argtypes = (
-    ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
-    ctypes.c_int,
-    ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
-    ctypes.c_double,
-    ctypes.c_double,
-    ctypes.c_double,
-    ctypes.c_double,
-    ctypes.c_double,
-    ctypes.c_double,
-    ctypes.c_double,
     ctypes.c_double,
     ctypes.c_double,
 )
@@ -145,8 +126,8 @@ model_CLEFT_wrapped_cumulant.argtypes = (
 
 # CLEFT for template fitting
 # Specify the return and argument data types
-model_CLEFT_wrapped_templatefit.restype = ctypes.c_void_p
-model_CLEFT_wrapped_templatefit.argtypes = (
+model_CLEFT_wrapped_cumulant_templatefit.restype = ctypes.c_void_p
+model_CLEFT_wrapped_cumulant_templatefit.argtypes = (
     ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
     ctypes.c_int,
     ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
@@ -164,8 +145,8 @@ model_CLEFT_wrapped_templatefit.argtypes = (
 
 # CLEFT with multipoles up to 8
 # Specify the return and argument data types
-model_CLEFT_wrapped_upto8.restype = ctypes.c_void_p
-model_CLEFT_wrapped_upto8.argtypes = (
+model_CLEFT_wrapped_cumulant_upto8.restype = ctypes.c_void_p
+model_CLEFT_wrapped_cumulant_upto8.argtypes = (
     ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
     ctypes.c_int,
     ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
@@ -268,41 +249,9 @@ def model_CLPT_only_xi_real(ingredients, theta, s_array, ns):
     return res
 
 
-# Wrapper for CLEFT
-# This is a new wrapper where we give directly a pointer to the numpy array of the ingredients
-def model_CLEFT(ingredients, theta, s_array, ns):
-    """
-    Wrapper for CLEFT.
-
-    Parameters:
-    -----------
-    ingredients : numpy.ndarray
-        Array of ingredients.
-    theta : tuple or list
-        Tuple or List containing model parameters.
-    s_array : numpy.ndarray
-        Array of s-values.
-    ns : int
-        Number of s-values.
-
-    Returns:
-    --------
-    numpy.ndarray
-        Resulting array.
-    """
-    load_CLEFT_wrapped(ingredients, len(ingredients[:, 0]))
-    f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per = theta
-    res = np.zeros(3 * ns, dtype=np.double)
-    model_CLEFT_wrapped(
-        s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per
-    )
-    return res
-
-
 # Wrapper for CLEFT using cumulant version for sigma
 # This is a new wrapper where we give directly a pointer to the numpy array of the ingredients
-# NOT YET TESTED, USE WITH CARE!
-def model_CLEFT_cumulant(ingredients, theta, s_array, ns):
+def model_CLEFT(ingredients, theta, s_array, ns):
     """
     Wrapper for CLEFT using cumulant version for sigma.
 
@@ -415,7 +364,7 @@ def model_CLEFT_templatefit(theta, s_array, ns):
     """
     f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per = theta
     res = np.zeros(3 * ns, dtype=np.double)
-    model_CLEFT_wrapped_templatefit(
+    model_CLEFT_wrapped_cumulant_templatefit(
         s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per
     )
     return res
@@ -448,7 +397,7 @@ def model_CLEFT_upto8(ingredients, theta, s_array, ns):
     load_CLEFT_wrapped(ingredients, len(ingredients[:, 0]))
     f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per = theta
     res = np.zeros(5 * ns, dtype=np.double)
-    model_CLEFT_wrapped_upto8(
+    model_CLEFT_wrapped_cumulant_upto8(
         s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per
     )
     return res
@@ -480,7 +429,7 @@ def model_load_reference(filename, theta, s_array, ns):
     init(binput)
     f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per = theta
     res = np.zeros(3 * ns, dtype=np.double)
-    model_CLEFT_wrapped(
+    model_CLEFT_wrapped_cumulant(
         s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per
     )
     return res
@@ -504,9 +453,6 @@ def main():
     result_ZA = model_ZA(test_ZA, theta_test_ZA, r_bins, ns)
     result_CLPT = model_CLPT(test_CLPT, theta_test_CLPT, r_bins, ns)
     result_CLEFT = model_CLEFT(test_CLEFT, theta_test_CLEFT, r_bins, ns)
-    result_CLEFT_cumulant = model_CLEFT_cumulant(
-        test_CLEFT, theta_test_CLEFT, r_bins, ns
-    )
 
     # Test the template fitting
     load_templatefit(test_ZA)
@@ -556,11 +502,6 @@ def main():
     ax[0].plot(r_bins, r_bins**2 * result_CLEFT[0:ns], label="CLEFT")
     ax[1].plot(r_bins, r_bins**2 * result_CLEFT[ns : 2 * ns])
     ax[2].plot(r_bins, r_bins**2 * result_CLEFT[2 * ns :])
-    ax[0].plot(
-        r_bins, r_bins**2 * result_CLEFT_cumulant[0:ns], label="CLEFT cumulant"
-    )
-    ax[1].plot(r_bins, r_bins**2 * result_CLEFT_cumulant[ns : 2 * ns])
-    ax[2].plot(r_bins, r_bins**2 * result_CLEFT_cumulant[2 * ns :])
     ax[0].plot(
         r_bins,
         r_bins**2 * result_reference[0:ns],
