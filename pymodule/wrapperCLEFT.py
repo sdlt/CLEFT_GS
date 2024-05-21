@@ -28,9 +28,9 @@ model_CLPT_wrapped_only_xi_realspace = (
     CLEFT_library.get_prediction_CLPT_only_xi_realspace
 )
 
-model_CLEFT_wrapped_cumulant = CLEFT_library.get_prediction_CLEFT_cumulant
-model_CLEFT_wrapped_cumulant_templatefit = CLEFT_library.get_prediction_CLEFT_cumulant_tmp_fitting
-model_CLEFT_wrapped_cumulant_upto8 = CLEFT_library.get_prediction_CLEFT_cumulant_upto8
+model_CLEFT_wrapped = CLEFT_library.get_prediction_CLEFT
+model_CLEFT_wrapped_templatefit = CLEFT_library.get_prediction_CLEFT_tmp_fitting
+model_CLEFT_wrapped_upto8 = CLEFT_library.get_prediction_CLEFT_upto8
 
 # Create/load the free function (only needed for template fitting)
 free_wrapped_templatefit = CLEFT_library.free_CLEFT
@@ -108,8 +108,8 @@ model_CLPT_wrapped_only_xi_realspace.argtypes = (
 
 # CLEFT cumulant version
 # Specify the return and argument data types
-model_CLEFT_wrapped_cumulant.restype = ctypes.c_void_p
-model_CLEFT_wrapped_cumulant.argtypes = (
+model_CLEFT_wrapped.restype = ctypes.c_void_p
+model_CLEFT_wrapped.argtypes = (
     ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
     ctypes.c_int,
     ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
@@ -126,8 +126,8 @@ model_CLEFT_wrapped_cumulant.argtypes = (
 
 # CLEFT for template fitting
 # Specify the return and argument data types
-model_CLEFT_wrapped_cumulant_templatefit.restype = ctypes.c_void_p
-model_CLEFT_wrapped_cumulant_templatefit.argtypes = (
+model_CLEFT_wrapped_templatefit.restype = ctypes.c_void_p
+model_CLEFT_wrapped_templatefit.argtypes = (
     ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
     ctypes.c_int,
     ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
@@ -145,8 +145,8 @@ model_CLEFT_wrapped_cumulant_templatefit.argtypes = (
 
 # CLEFT with multipoles up to 8
 # Specify the return and argument data types
-model_CLEFT_wrapped_cumulant_upto8.restype = ctypes.c_void_p
-model_CLEFT_wrapped_cumulant_upto8.argtypes = (
+model_CLEFT_wrapped_upto8.restype = ctypes.c_void_p
+model_CLEFT_wrapped_upto8.argtypes = (
     ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
     ctypes.c_int,
     ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
@@ -274,7 +274,7 @@ def model_CLEFT(ingredients, theta, s_array, ns):
     load_CLEFT_wrapped(ingredients, len(ingredients[:, 0]))
     f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per = theta
     res = np.zeros(3 * ns, dtype=np.double)
-    model_CLEFT_wrapped_cumulant(
+    model_CLEFT_wrapped(
         s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per
     )
     return res
@@ -364,7 +364,7 @@ def model_CLEFT_templatefit(theta, s_array, ns):
     """
     f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per = theta
     res = np.zeros(3 * ns, dtype=np.double)
-    model_CLEFT_wrapped_cumulant_templatefit(
+    model_CLEFT_wrapped_templatefit(
         s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per
     )
     return res
@@ -397,7 +397,7 @@ def model_CLEFT_upto8(ingredients, theta, s_array, ns):
     load_CLEFT_wrapped(ingredients, len(ingredients[:, 0]))
     f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per = theta
     res = np.zeros(5 * ns, dtype=np.double)
-    model_CLEFT_wrapped_cumulant_upto8(
+    model_CLEFT_wrapped_upto8(
         s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per
     )
     return res
@@ -429,7 +429,7 @@ def model_load_reference(filename, theta, s_array, ns):
     init(binput)
     f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per = theta
     res = np.zeros(3 * ns, dtype=np.double)
-    model_CLEFT_wrapped_cumulant(
+    model_CLEFT_wrapped(
         s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per
     )
     return res
