@@ -979,6 +979,41 @@ void get_prediction_CLPT(double *s_array, int nbins, double out[],
     free_CLEFT();
 }
 
+// same as get_prediction_CLPT but using GL integration throughout
+void get_prediction_CLPT_approx_fast(double *s_array, int nbins, double out[],
+                         double in_f, double in_b1, double in_b2, double in_sigv, double in_alpha_par, double in_alpha_per) {
+    double out_tmp[3], par[13];
+
+    par[0] = in_f;
+    par[1] = in_b1;
+    par[2] = in_b2;
+    par[3] = 0;
+    par[4] = 0;
+    par[5] = in_sigv;
+    par[6] = in_alpha_par;
+    par[7] = in_alpha_per;
+    par[8] = par[9] = par[10] = par[11] = par[12] = 0;
+
+    interpXi(par);
+    interpV12(par);
+    interpSigma12(par);
+
+    for (unsigned int i = 0; i < nbins; i++) {
+        multipole(s_array[i], par, out_tmp);
+        out[i] = out_tmp[0];
+        out[nbins + i] = 5 * out_tmp[1];
+        out[2 * nbins + i] = 9 * out_tmp[2];
+    }
+
+    for (unsigned int i = 0; i < 4; i++) {
+        gsl_spline_free(spline[i]);
+        gsl_interp_accel_free(acc[i]);
+    }
+    free_CLEFT();
+}
+
+
+
 // The appropriate function to use for template fitting as it doesn't free the ingredients after the computation of the multipoles
 // (For template fitting the ingredients get once computed for one cosmology and then stay the same as only AP and f are varied 
 // as cosmological parameters)

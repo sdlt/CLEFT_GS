@@ -6,7 +6,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.ctypeslib import ndpointer
-from GS import model_CLEFT as model_CLEFT_py_GS
+#from GS import model_CLEFT as model_CLEFT_py_GS
 
 # This is the same as numpy.ctypeslib.load_library
 dir_name = "/home/mkarcher/CLEFT_GS"
@@ -25,6 +25,7 @@ load_CLEFT_wrapped.argtypes = (
 model_ZA_wrapped = CLEFT_library.get_prediction_ZA
 model_ZA_wrapped_templatefit = CLEFT_library.get_prediction_ZA_tmp_fitting
 model_CLPT_wrapped = CLEFT_library.get_prediction_CLPT
+model_CLPT_wrapped_fast = CLEFT_library.get_prediction_CLPT_approx_fast
 model_CLPT_wrapped_templatefit = CLEFT_library.get_prediction_CLPT_tmp_fitting
 model_CLPT_wrapped_only_xi_realspace = (
     CLEFT_library.get_prediction_CLPT_only_xi_realspace
@@ -82,6 +83,23 @@ model_CLPT_wrapped.argtypes = (
     ctypes.c_double,
     ctypes.c_double,
 )
+
+# CLPT but using GL integration thoroughout (fast)
+# Specify the return and argument data types
+model_CLPT_wrapped_fast.restype = ctypes.c_void_p
+model_CLPT_wrapped_fast.argtypes = (
+    ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
+    ctypes.c_int,
+    ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+)
+
+
 
 # CLPT template fitting
 # Specify the return and argument data types
@@ -241,6 +259,37 @@ def model_CLPT(ingredients, theta, s_array, ns):
     res = np.zeros(3 * ns, dtype=np.double)
     model_CLPT_wrapped(s_array, ns, res, f, b1, b2, sigv, alpha_par, alpha_per)
     return res
+
+
+# Wrapper for CLPT using GL integration throughout (fast)
+# This is a new wrapper where we give directly a pointer to the numpy array of the ingredients
+def model_CLPT_fast(ingredients, theta, s_array, ns):
+    """
+    Wrapper for CLPT.
+
+    Parameters:
+    -----------
+    ingredients : numpy.ndarray
+        Array of ingredients.
+    theta : tuple or list
+        Tuple or List containing model parameters.
+    s_array : numpy.ndarray
+        Array of s-values.
+    ns : int
+        Number of s-values.
+
+    Returns:
+    --------
+    numpy.ndarray
+        Resulting array.
+    """
+    load_CLEFT_wrapped(ingredients, len(ingredients[:, 0]))
+    f, b1, b2, sigv, alpha_par, alpha_per = theta
+    res = np.zeros(3 * ns, dtype=np.double)
+    model_CLPT_wrapped_fast(s_array, ns, res, f, b1, b2, sigv, alpha_par, alpha_per)
+    return res
+
+
 
 
 # Wrapper for CLPT xi in real space
