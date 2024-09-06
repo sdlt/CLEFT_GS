@@ -1097,6 +1097,46 @@ void get_prediction_CLEFT(double *s_array, int nbins, double out[],
     free_CLEFT();
 }
 
+// CLEFT prediction using the cumulant for sigma but using Gauss-Legendre for everything (fast)
+void get_prediction_CLEFT_approx_fast(double *s_array, int nbins, double out[],
+                          double in_f, double in_b1, double in_b2, double in_bs, double in_ax, double in_av, double in_as, double in_alpha_par, double in_alpha_per) {
+    double par[13], out_tmp[3];
+
+    par[0] = in_f;
+    par[1] = in_b1;
+    par[2] = in_b2;
+    par[3] = in_bs;
+    par[4] = 0;
+    par[5] = 0;
+    par[6] = in_alpha_par;
+    par[7] = in_alpha_per;
+    par[8] = in_ax;
+    par[9] = in_av;
+    par[10] = 0;
+    par[11] = in_as;
+    par[12] = 0;
+
+    // clock_t begin = clock();
+
+    interpXi(par);
+    interpV12(par);
+    interpSigma12(par);
+
+    for (unsigned int i = 0; i < nbins; i++) {
+        multipole_cumulant(s_array[i], par, out_tmp);
+        out[i] = out_tmp[0];
+        out[nbins + i] = 5 * out_tmp[1];
+        out[2 * nbins + i] = 9 * out_tmp[2];
+    }
+
+    for (unsigned int i = 0; i < 4; i++) {
+        gsl_spline_free(spline[i]);
+        gsl_interp_accel_free(acc[i]);
+    }
+
+    free_CLEFT();
+}
+
 // A function to compute multipoles up to l=8, hence the output will contain l=0, l=2, l=4, l=6 and l=8
 // Can only be used in a full-fit because the ingredients array gets freed directly
 void get_prediction_CLEFT_upto8(double *s_array, int nbins, double out[],

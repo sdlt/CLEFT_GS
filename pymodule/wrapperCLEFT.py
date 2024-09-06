@@ -1,10 +1,12 @@
 import ctypes
 import os
 from ctypes import pointer
+import time
 
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.ctypeslib import ndpointer
+from GS import model_CLEFT as model_CLEFT_py_GS
 
 # This is the same as numpy.ctypeslib.load_library
 dir_name = "/home/mkarcher/CLEFT_GS"
@@ -29,6 +31,7 @@ model_CLPT_wrapped_only_xi_realspace = (
 )
 
 model_CLEFT_wrapped = CLEFT_library.get_prediction_CLEFT
+model_CLEFT_wrapped_fast = CLEFT_library.get_prediction_CLEFT_approx_fast
 model_CLEFT_wrapped_templatefit = CLEFT_library.get_prediction_CLEFT_tmp_fitting
 model_CLEFT_wrapped_upto8 = CLEFT_library.get_prediction_CLEFT_upto8
 
@@ -123,6 +126,26 @@ model_CLEFT_wrapped.argtypes = (
     ctypes.c_double,
     ctypes.c_double,
 )
+
+# CLEFT cumulant version approximate fast version
+# Specify the return and argument data types
+model_CLEFT_wrapped_fast.restype = ctypes.c_void_p
+model_CLEFT_wrapped_fast.argtypes = (
+    ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
+    ctypes.c_int,
+    ndpointer(ctypes.c_double, flags="C_CONTIGUOUS"),
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+    ctypes.c_double,
+)
+
+
 
 # CLEFT for template fitting
 # Specify the return and argument data types
@@ -278,6 +301,38 @@ def model_CLEFT(ingredients, theta, s_array, ns):
         s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per
     )
     return res
+
+# Wrapper for CLEFT using cumulant version for sigma fast approximate version
+# This is a new wrapper where we give directly a pointer to the numpy array of the ingredients
+def model_CLEFT_fast(ingredients, theta, s_array, ns):
+    """
+    Wrapper for CLEFT using cumulant version for sigma.
+
+    Parameters:
+    -----------
+    ingredients : numpy.ndarray
+        Array of ingredients.
+    theta : tuple or list
+        Tuple or List containing model parameters.
+    s_array : numpy.ndarray
+        Array of s-values.
+    ns : int
+        Number of s-values.
+
+    Returns:
+    --------
+    numpy.ndarray
+        Resulting array.
+    """
+    load_CLEFT_wrapped(ingredients, len(ingredients[:, 0]))
+    f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per = theta
+    res = np.zeros(3 * ns, dtype=np.double)
+    model_CLEFT_wrapped_fast(
+        s_array, ns, res, f, b1, b2, bs, ax, av, aas, alpha_par, alpha_per
+    )
+    return res
+
+
 
 
 def load_templatefit(ingredients):
@@ -444,31 +499,46 @@ def main():
     smin = 22.5
     smax = 197.5
     ns = 36
-    r_bins = np.linspace(smin, smax, ns)
+    s_bins = np.linspace(smin, smax, ns)
     # Some more or less reasonable parameter (just for testing if both loading methods give the same result)
     theta_test_ZA = [0.8, 1.5, 2.5, 1, 1]
     theta_test_CLPT = [0.8, 1.5, 0.1, 2.5, 1, 1]
     theta_test_CLEFT = [0.8, 1.5, 0.1, 0.1, 40, 30, 30, 1, 1]
 
-    result_ZA = model_ZA(test_ZA, theta_test_ZA, r_bins, ns)
-    result_CLPT = model_CLPT(test_CLPT, theta_test_CLPT, r_bins, ns)
-    result_CLEFT = model_CLEFT(test_CLEFT, theta_test_CLEFT, r_bins, ns)
+    # ZA model
+    result_ZA = model_ZA(test_ZA, theta_test_ZA, s_bins, ns)
+    # CLPT model
+    result_CLPT = model_CLPT(test_CLPT, theta_test_CLPT, s_bins, ns)
+    # CLEFT model with Gaussian streaming in C
+    start = time.perf_counter()
+    result_CLEFT = model_CLEFT(test_CLEFT, theta_test_CLEFT, s_bins, ns)
+    end_C = time.perf_counter()
+    # CLEFT model with Gaussian streaming in python 
+    result_CLEFT_pyGS = model_CLEFT_py_GS(test_CLEFT, theta_test_CLEFT, s_bins, ns)
+    end_py = time.perf_counter()
+    print(f'Time needed for GS in C: {end_C-start} seconds')
+    print(f'Time needed for GS in Python: {end_py-end_C} seconds')
+
+    start_fast = time.perf_counter()
+    result_CLEFT_fast = model_CLEFT_fast(test_CLEFT, theta_test_CLEFT, s_bins, ns)
+    end_fast = time.perf_counter()
+    print(f'Time needed for fast GS: {end_fast-start_fast} seconds')
 
     # Test the template fitting
     load_templatefit(test_ZA)
-    result_ZA_tmp = model_ZA_templatefit(theta_test_ZA, r_bins, ns)
+    result_ZA_tmp = model_ZA_templatefit(theta_test_ZA, s_bins, ns)
     free_templatefit()
 
     load_templatefit(test_CLPT)
-    result_CLPT_tmp = model_CLPT_templatefit(theta_test_CLPT, r_bins, ns)
+    result_CLPT_tmp = model_CLPT_templatefit(theta_test_CLPT, s_bins, ns)
     free_templatefit()
 
     load_templatefit(test_CLEFT)
-    result_CLEFT_tmp = model_CLEFT_templatefit(theta_test_CLEFT, r_bins, ns)
+    result_CLEFT_tmp = model_CLEFT_templatefit(theta_test_CLEFT, s_bins, ns)
     free_templatefit()
 
     result_reference = model_load_reference(
-        power_spectrum_file, theta_test_CLEFT, r_bins, ns
+        power_spectrum_file, theta_test_CLEFT, s_bins, ns
     )
 
     # This should be zero
@@ -484,39 +554,61 @@ def main():
     print(
         f"Sanity check for template fitting (CLEFT) :{np.allclose(result_CLEFT_tmp, result_CLEFT)}"
     )
+    print(
+        f"Sanity check python streaming: {np.allclose(result_CLEFT, result_CLEFT_pyGS)}"
+    )
+    print(
+        f"Sanity check fast CLEFT: {np.allclose(result_CLEFT, result_CLEFT_fast)}"
+    )
+    print("Relative differences between python- and C-version for first three multipoles:")
+    print(result_CLEFT[:6]/result_CLEFT_pyGS[:6]-1)
+    print(result_CLEFT[ns:ns+6]/result_CLEFT_pyGS[ns:ns+6]-1)
+    print(result_CLEFT[2*ns:2*ns+6]/result_CLEFT_pyGS[2*ns:2*ns+6]-1)
 
+    print("Relative differences between fast and slow version for first three multipoles:")
+    print(result_CLEFT[:6]/result_CLEFT_fast[:6]-1)
+    print(result_CLEFT[ns:ns+6]/result_CLEFT_fast[ns:ns+6]-1)
+    print(result_CLEFT[2*ns:2*ns+6]/result_CLEFT_fast[2*ns:2*ns+6]-1)
+
+    #############################################################
+    # Plotting
+    #############################################################
     fig, ax = plt.subplots(1, 3)
     fig.set_size_inches(13, 4)
 
     # plot ZA
-    ax[0].plot(r_bins, r_bins**2 * result_ZA[0:ns], label="ZA")
-    ax[1].plot(r_bins, r_bins**2 * result_ZA[ns : 2 * ns])
-    ax[2].plot(r_bins, r_bins**2 * result_ZA[2 * ns :])
+    ax[0].plot(s_bins, s_bins**2 * result_ZA[0:ns], label="ZA")
+    ax[1].plot(s_bins, s_bins**2 * result_ZA[ns : 2 * ns])
+    ax[2].plot(s_bins, s_bins**2 * result_ZA[2 * ns :])
 
     # plot CLPT
-    ax[0].plot(r_bins, r_bins**2 * result_CLPT[0:ns], label="CLPT", linestyle="--")
-    ax[1].plot(r_bins, r_bins**2 * result_CLPT[ns : 2 * ns], linestyle="--")
-    ax[2].plot(r_bins, r_bins**2 * result_CLPT[2 * ns :], linestyle="--")
+    ax[0].plot(s_bins, s_bins**2 * result_CLPT[0:ns], label="CLPT", linestyle="--")
+    ax[1].plot(s_bins, s_bins**2 * result_CLPT[ns : 2 * ns], linestyle="--")
+    ax[2].plot(s_bins, s_bins**2 * result_CLPT[2 * ns :], linestyle="--")
 
     # plot CLEFT
-    ax[0].plot(r_bins, r_bins**2 * result_CLEFT[0:ns], label="CLEFT")
-    ax[1].plot(r_bins, r_bins**2 * result_CLEFT[ns : 2 * ns])
-    ax[2].plot(r_bins, r_bins**2 * result_CLEFT[2 * ns :])
+    ax[0].plot(s_bins, s_bins**2 * result_CLEFT[0:ns], label="CLEFT")
+    ax[1].plot(s_bins, s_bins**2 * result_CLEFT[ns : 2 * ns])
+    ax[2].plot(s_bins, s_bins**2 * result_CLEFT[2 * ns :])
     ax[0].plot(
-        r_bins,
-        r_bins**2 * result_reference[0:ns],
+        s_bins,
+        s_bins**2 * result_reference[0:ns],
         linestyle="--",
         label="CLEFT sanity check",
     )
-    ax[1].plot(r_bins, r_bins**2 * result_reference[ns : 2 * ns], linestyle="--")
-    ax[2].plot(r_bins, r_bins**2 * result_reference[2 * ns :], linestyle="--")
+    ax[1].plot(s_bins, s_bins**2 * result_reference[ns : 2 * ns], linestyle="--")
+    ax[2].plot(s_bins, s_bins**2 * result_reference[2 * ns :], linestyle="--")
+
+    ax[0].plot(s_bins, s_bins**2 * result_CLEFT_pyGS[0:ns], label="CLEFT GS python")
+    ax[1].plot(s_bins, s_bins**2 * result_CLEFT_pyGS[ns : 2 * ns])
+    ax[2].plot(s_bins, s_bins**2 * result_CLEFT_pyGS[2 * ns :])
 
     ax[0].set_ylabel(r"Monopole $\xi_0$")
     ax[1].set_ylabel(r"Quadrupole $\xi_2$")
     ax[2].set_ylabel(r"Hexdecapole $\xi_4$")
 
     for i in range(3):
-        ax[i].set_xlabel("r [Mpc/h]")
+        ax[i].set_xlabel("s [Mpc/h]")
 
     ax[0].legend()
     plt.savefig("Test_2PCF.png", dpi=300)
