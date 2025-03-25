@@ -195,7 +195,7 @@ double Sigma12_cumulant(double xi, double mu, double r) {
         r = rmax;
 
     vr = V12(r); // Velocity connecting a pair of galaxies (projection to the LOS will be done in the combination)
-    spar = gsl_spline_eval(spline[2], r, acc[2]) - vr * vr; //Here the cumulant is created
+    spar = gsl_spline_eval(spline[2], r, acc[2]) - vr * vr / (1.0 + xi); //Here the cumulant is created, # Fixed the appropriate factor of 1/(1+xi)
     sper = gsl_spline_eval(spline[3], r, acc[3]);
 
     return (mu * mu * spar + (1. - mu * mu) * sper) / (1.0 + xi);
